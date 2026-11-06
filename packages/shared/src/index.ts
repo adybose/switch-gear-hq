@@ -1,4 +1,4 @@
-// Shared types and helpers for every workspace. Money, GST, events and clock arrive in T-04.
+// Shared types and helpers for every workspace.
 
 /** Shown on every storefront page (spec: no real payments or deliveries). */
 export const DEMO_BANNER = 'Demo store. No real payments or deliveries.';
@@ -10,3 +10,7 @@ export const DEFAULT_PORTS = {
   gatekeeper: 4100,
   db: 5432,
 } as const;
+
+export * from './money';
+export * from './events';
+export * from './clock';
