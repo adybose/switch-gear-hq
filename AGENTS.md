@@ -43,6 +43,7 @@ npm run db:migrate          # apply Prisma migrations
 npm run db:seed             # seed catalogue, partners, demo data
 npm run dev                 # store + sim in watch mode
 npm run lint                # eslint + prettier check
+npm run format              # prettier --write
 npm run typecheck           # tsc --noEmit across workspaces
 npm test                    # vitest
 npm run test:e2e            # playwright

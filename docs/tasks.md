@@ -14,7 +14,7 @@ How to use this file:
 
 | ID | Title | Owner | Depends on | Priority | Status |
 | --- | --- | --- | --- | --- | --- |
-| T-01 | Monorepo skeleton, Docker Compose, CI | builder | — | MVP | todo |
+| T-01 | Monorepo skeleton, Docker Compose, CI | builder | — | MVP | review |
 | T-02 | Database schema and migrations | builder | T-01 | MVP | todo |
 | T-03 | Seed data and demo reset | builder | T-02 | MVP | todo |
 | T-04 | Shared package: money, GST, events, clock | builder | T-01 | MVP | todo |
