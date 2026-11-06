@@ -46,6 +46,27 @@ describe('business clock', () => {
     expect(fetch).toHaveBeenCalledTimes(2);
   });
 
+  it('makes concurrent reads wait for the same in-flight sync', async () => {
+    const time = fakeTime();
+    let respond: (res: Response) => void = () => {};
+    const fetch = vi.fn(
+      () =>
+        new Promise<Response>((resolve) => {
+          respond = resolve;
+        }),
+    );
+    const clock = createClock({ simUrl: 'http://sim', realNow: time.now, fetch });
+
+    const first = clock.read();
+    const second = clock.read();
+    respond(new Response(JSON.stringify({ now: SIM_NOW, speed: 144 })));
+
+    const expected = { now: new Date(SIM_NOW), speed: 144, source: 'sim' };
+    expect(await first).toEqual(expected);
+    expect(await second).toEqual(expected);
+    expect(fetch).toHaveBeenCalledTimes(1);
+  });
+
   it('falls back to real time when the sim is down', async () => {
     const time = fakeTime();
     const fetch = vi.fn(async () => {

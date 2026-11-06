@@ -54,9 +54,10 @@ export function createClock(options: ClockOptions = {}): BusinessClock {
   // Last good sim reading, and the real time it was taken.
   let synced: { businessMs: number; realMs: number; speed: number } | undefined;
   let lastAttemptMs = Number.NEGATIVE_INFINITY;
+  // Sync in progress; concurrent reads wait for it instead of reading stale state.
+  let inFlight: Promise<void> | undefined;
 
   async function sync(): Promise<void> {
-    if (!options.simUrl) return;
     lastAttemptMs = realNow();
     try {
       const res = await doFetch(new URL('/sim/clock', options.simUrl), {
@@ -72,7 +73,12 @@ export function createClock(options: ClockOptions = {}): BusinessClock {
   }
 
   async function read(): Promise<ClockReading> {
-    if (realNow() - lastAttemptMs >= refreshMs) await sync();
+    if (options.simUrl && !inFlight && realNow() - lastAttemptMs >= refreshMs) {
+      inFlight = sync().finally(() => {
+        inFlight = undefined;
+      });
+    }
+    if (inFlight) await inFlight;
     const real = realNow();
     if (!synced) return { now: new Date(real), speed: 1, source: 'real' };
     const businessMs = synced.businessMs + (real - synced.realMs) * synced.speed;
