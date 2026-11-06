@@ -8,6 +8,19 @@ on:
 jobs:
   check:
     runs-on: ubuntu-latest
+    services:
+      db:
+        image: postgres:16-alpine
+        env:
+          POSTGRES_USER: switchgear
+          POSTGRES_PASSWORD: switchgear-test-only
+          POSTGRES_DB: switchgear
+        ports: ['5432:5432']
+        options: >-
+          --health-cmd "pg_isready -U switchgear" --health-interval 2s --health-timeout 3s
+          --health-retries 20
+    env:
+      DATABASE_URL: postgresql://switchgear:switchgear-test-only@localhost:5432/switchgear
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-node@v4
@@ -17,4 +30,6 @@ jobs:
       - run: npm ci
       - run: npm run lint
       - run: npm run typecheck
+      - run: npm run db:migrate
+      - run: npm run db:check -w @switch-gear/store # migrations match schema.prisma
       - run: npm test

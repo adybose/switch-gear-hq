@@ -11,3 +11,5 @@ api
 agents
 .agents
 *.md
+apps/store/src/generated
+apps/store/prisma/migrations

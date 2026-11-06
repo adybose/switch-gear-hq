@@ -7,14 +7,17 @@ COPY apps/sim/package.json apps/sim/
 COPY apps/gatekeeper/package.json apps/gatekeeper/
 COPY packages/shared/package.json packages/shared/
 COPY packages/sg-cli/package.json packages/sg-cli/
-RUN npm ci
+# Scripts run after the full copy: postinstall needs the Prisma schema.
+RUN npm ci --ignore-scripts
 COPY . .
+RUN npm run db:generate -w @switch-gear/store
 
 FROM base AS store
 ENV NEXT_TELEMETRY_DISABLED=1
 RUN npm run build -w @switch-gear/store
 EXPOSE 3000
-CMD ["npm", "run", "start", "-w", "@switch-gear/store"]
+# Apply pending migrations, then serve.
+CMD ["sh", "-c", "npm run db:migrate && npm run start -w @switch-gear/store"]
 
 FROM base AS sim
 EXPOSE 4000
