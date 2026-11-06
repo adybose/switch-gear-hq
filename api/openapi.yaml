@@ -47,6 +47,10 @@ paths:
     post:
       tags: [public]
       security: []
+      description: >
+        Prices every line from the catalogue (client prices are ignored). 422 errors include
+        not_serviceable (PIN code ShipFast doesn't serve), discount_code_invalid and unknown_sku,
+        with a customer-facing message in details keyed by field.
       requestBody:
         required: true
         content:
@@ -63,6 +67,52 @@ paths:
         '201':
           description: Order placed; pay at paymentUrl
           content: { application/json: { schema: { type: object, properties: { orderNumber: { type: string }, totalPaise: { type: integer }, paymentUrl: { type: string } } } } }
+        '422': { $ref: '#/components/responses/Invalid' }
+  /checkout/quote:
+    post:
+      tags: [public]
+      security: []
+      description: >
+        Totals for a cart before the order is placed, priced from the catalogue. An invalid
+        discount code or unserviceable PIN code is reported in the body, not as an error.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [items]
+              properties:
+                items: { type: array, items: { type: object, required: [sku, qty], properties: { sku: { type: string }, qty: { type: integer, minimum: 1, maximum: 10 } } } }
+                discountCode: { type: string }
+                state: { type: string, description: 'Delivery state, for CGST+SGST vs IGST; default Karnataka' }
+                pincode: { type: string }
+      responses:
+        '200':
+          description: Quote
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  itemCount: { type: integer }
+                  subtotalPaise: { type: integer }
+                  discountSource: { type: [string, 'null'], enum: [bundle, code, null] }
+                  discountPercent: { type: integer }
+                  discountPaise: { type: integer }
+                  shippingPaise: { type: integer }
+                  taxPaise: { type: integer }
+                  totalPaise: { type: integer }
+                  discountCode: { type: [string, 'null'] }
+                  discountCodeError: { type: [string, 'null'] }
+                  pincode:
+                    type: [object, 'null']
+                    properties:
+                      serviceable: { type: boolean }
+                      zone: { type: string, enum: [same_city, same_zone, national] }
+                      transitDays: { type: integer }
+                      reason: { type: string, enum: [invalid_pincode, not_serviceable] }
+                      message: { type: string }
         '422': { $ref: '#/components/responses/Invalid' }
   /orders/track:
     get:

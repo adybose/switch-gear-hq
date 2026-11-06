@@ -23,9 +23,9 @@ describe('events', () => {
     expect([...EVENT_TYPES]).toEqual(expect.arrayContaining(names));
   });
 
-  it('adds only approval.decided beyond the spec (docs/architecture.md)', () => {
+  it('adds only order.placed (T-06) and approval.decided (architecture.md) beyond the spec', () => {
     const extra = EVENT_TYPES.filter((t) => !specEventNames().includes(t));
-    expect(extra).toEqual(['approval.decided']);
+    expect(extra.sort()).toEqual(['approval.decided', 'order.placed']);
   });
 
   it('has no duplicates', () => {

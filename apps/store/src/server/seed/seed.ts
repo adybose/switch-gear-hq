@@ -84,14 +84,25 @@ export async function seed(db: Db, options: SeedOptions): Promise<SeedResult> {
   return { products: DESIGNS.length, variants: variants.length, keysCreated: created };
 }
 
-/** Empties every table (except Prisma's migration history) and resets ID sequences. */
+const quoteIdent = (name: string) => `"${name.replaceAll('"', '""')}"`;
+
+/**
+ * Empties every table (except Prisma's migration history) and restarts every sequence,
+ * including standalone ones like order_number_seq, so numbering starts over.
+ */
 export async function wipe(db: Db): Promise<void> {
   const tables = await db.$queryRaw<{ tablename: string }[]>`
     SELECT tablename FROM pg_tables
     WHERE schemaname = current_schema() AND tablename <> '_prisma_migrations'`;
-  if (tables.length === 0) return;
-  const list = tables.map((t) => `"${t.tablename.replaceAll('"', '""')}"`).join(', ');
-  await db.$executeRawUnsafe(`TRUNCATE TABLE ${list} RESTART IDENTITY CASCADE`);
+  if (tables.length > 0) {
+    const list = tables.map((t) => quoteIdent(t.tablename)).join(', ');
+    await db.$executeRawUnsafe(`TRUNCATE TABLE ${list} RESTART IDENTITY CASCADE`);
+  }
+  const sequences = await db.$queryRaw<{ sequencename: string }[]>`
+    SELECT sequencename FROM pg_sequences WHERE schemaname = current_schema()`;
+  for (const { sequencename } of sequences) {
+    await db.$executeRawUnsafe(`ALTER SEQUENCE ${quoteIdent(sequencename)} RESTART`);
+  }
 }
 
 /**

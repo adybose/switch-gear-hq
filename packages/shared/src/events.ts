@@ -1,4 +1,5 @@
-// Business events (docs/spec.md §10, plus approval.decided from docs/architecture.md).
+// Business events (docs/spec.md §10, plus approval.decided from docs/architecture.md and
+// order.placed from T-06).
 // The store writes them to the Event outbox; Gatekeeper reads them from GET /api/v1/events.
 // Payloads carry human-facing IDs (ORD-1042, APR-7) and money in paise, never personal data.
 
@@ -13,6 +14,13 @@ export type Partner = 'printhub' | 'shipfast';
 export type IsoDate = string;
 
 export interface EventPayloads {
+  /** From T-06 (checkout); not in the spec §10 routing table. */
+  'order.placed': {
+    orderNumber: string;
+    totalPaise: number;
+    itemCount: number;
+    source: 'web' | 'generator';
+  };
   'order.paid': {
     orderNumber: string;
     totalPaise: number;
@@ -135,6 +143,7 @@ export type EventType = keyof EventPayloads;
 
 /** Every event type, in spec §10 order. */
 export const EVENT_TYPES = [
+  'order.placed',
   'order.paid',
   'payment.failed',
   'printjob.misprint',
