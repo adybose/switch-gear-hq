@@ -67,6 +67,32 @@ describe('business clock', () => {
     expect(fetch).toHaveBeenCalledTimes(1);
   });
 
+  it('makes concurrent reads wait for the recovery sync after the sim was down', async () => {
+    const time = fakeTime();
+    let respond: (res: Response) => void = () => {};
+    const fetch = vi
+      .fn<typeof globalThis.fetch>()
+      .mockRejectedValueOnce(new TypeError('fetch failed'))
+      .mockImplementation(
+        () =>
+          new Promise<Response>((resolve) => {
+            respond = resolve;
+          }),
+      );
+    const clock = createClock({ simUrl: 'http://sim', refreshMs: 1000, realNow: time.now, fetch });
+
+    expect((await clock.read()).source).toBe('real');
+    time.advance(1000);
+    const first = clock.read();
+    const second = clock.read();
+    respond(new Response(JSON.stringify({ now: SIM_NOW, speed: 144 })));
+
+    const expected = { now: new Date(SIM_NOW), speed: 144, source: 'sim' };
+    expect(await first).toEqual(expected);
+    expect(await second).toEqual(expected);
+    expect(fetch).toHaveBeenCalledTimes(2);
+  });
+
   it('falls back to real time when the sim is down', async () => {
     const time = fakeTime();
     const fetch = vi.fn(async () => {
