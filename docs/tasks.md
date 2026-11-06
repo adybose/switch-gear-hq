@@ -232,7 +232,7 @@ Reviewer (`@reviewer`) reviews every builder PR with the `review-pr` skill.
 
 ### T-26 Switch template and onboarding (founder)
 
-- AC: `switch/switch-gear.template.yaml` creates rooms, roles and agents; tested on a fresh server.
+- AC: `switch/switch-gear-hq.template.yaml` creates rooms, roles and agents; tested on a fresh server.
 - AC: all 9 channels exist in Slack and each agent answers `!agents-greet`.
 
 ### T-27 Scenario buttons
