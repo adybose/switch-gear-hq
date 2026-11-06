@@ -7,7 +7,7 @@ test-results/
 .env
 .env.*
 !.env.example
-ops/*/.env
+agents/**/.env
 .env.local.keys
 .DS_Store
 *.log

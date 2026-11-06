@@ -33,7 +33,7 @@ every room → `#engineering` (bugs), every room → `#approvals` (over-limit ac
 | Support Agent | `@support` | Codex | `#support` | Refund directly; promise outside policy |
 | Gatekeeper | `@gatekeeper` | Custom Node.js, no AI | `#events` | Make decisions |
 
-Three limits on every agent: role instructions (`agents/<role>.md`), its department API key,
+Three limits on every agent: role instructions (`agents/<role>/AGENTS.md`; builder and reviewer: `agents/external/<role>/AGENTS.md`), its department API key,
 and the store's approval gates.
 
 ## Where agents run (founder's MacBook, via Switch Console)
@@ -42,8 +42,8 @@ and the store's approval gates.
 | --- | --- | --- |
 | Builder | `~/repos/switch-gear-hq-worktrees/builder` (git worktree) | git, gh, npm, docker |
 | Reviewer | `~/repos/switch-gear-hq-worktrees/reviewer` (git worktree) | git, gh, test runner |
-| Fulfilment, Finance, Marketing, Support | `~/repos/switch-gear-hq/ops/<department>/` | `sg` CLI with that department's key |
-| Chief of Staff | `~/repos/switch-gear-hq/ops/hq/` | `sg` read-only across departments |
+| Fulfilment, Finance, Marketing, Support | `~/repos/switch-gear-hq/agents/<role>/` | `sg` CLI with that department's key |
+| Chief of Staff | `~/repos/switch-gear-hq/agents/chief-of-staff/` | `sg` read-only across departments |
 | Gatekeeper | Docker container `gatekeeper` | Switch agent protocol, founder key |
 | Store, sim, db | Docker Compose, `localhost:3000` | — |
 

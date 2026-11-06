@@ -38,7 +38,7 @@ How to use this file:
 | T-22 | Tickets, ticket simulator, email outbox | builder | T-11, T-15 | MVP | todo |
 | T-23 | `sg` CLI | builder | T-09 | MVP | todo |
 | T-24 | Gatekeeper (custom Switch agent) | builder | T-08, T-10 | MVP | todo |
-| T-25 | Role, room and business skill files; ops folders | builder | T-23 | MVP | todo |
+| T-25 | Role, room and business skill files; agent folders | builder | T-23 | MVP | todo |
 | T-26 | Switch template and onboarding | founder | T-24, T-25 | MVP | todo |
 | T-27 | Scenario buttons | builder | T-15, T-19 | MVP (3 of 6) | todo |
 | T-28 | README and demo script | founder | T-26 | MVP | todo |
@@ -221,12 +221,14 @@ Reviewer (`@reviewer`) reviews every builder PR with the `review-pr` skill.
   Switch identity and calls the decision endpoint with the founder key; ignores everyone else.
 - AC: timers: `report.daily` to `@chief-of-staff` at end of each business day; weekly invoices nudge to `@finance`.
 
-### T-25 Role, room and business skill files; ops folders
+### T-25 Role, room and business skill files; agent folders
 
-- AC: `agents/<role>.md` for all 7 AI roles; `rooms/<channel>.md` for all 8 channels (see `docs/plan.md`).
+- AC: a role file for all 7 AI roles: `agents/<role>/AGENTS.md`, or `agents/external/<role>/AGENTS.md` for
+  builder and reviewer; `rooms/<channel>.md` for all 8 channels (see `docs/plan.md`).
 - AC: business skills in `.agents/skills/` (list in the plan doc), each with `name` + `description`.
-- AC: `ops/{hq,fulfilment,finance,marketing,support}/` each with `AGENTS.md`, `CLAUDE.md`
-  (`@AGENTS.md`) and `.env.example`.
+- AC: `agents/{chief-of-staff,fulfilment,finance,marketing,support}/` each with `AGENTS.md`, `CLAUDE.md`
+  (`@AGENTS.md`) and `.env.example`; `agents/external/{builder,reviewer}/` each with `AGENTS.md`
+  and `CLAUDE.md`.
 
 ### T-26 Switch template and onboarding (founder)
 
