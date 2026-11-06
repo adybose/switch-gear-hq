@@ -1,0 +1,387 @@
+openapi: 3.1.0
+info:
+  title: Switch Gear Store API
+  version: 0.1.0
+  description: >
+    REST API for the Switch Gear store. Agents call it through the `sg` CLI.
+    All money is integer paise. All times are ISO 8601 UTC.
+    Over-limit actions return 202 with an approval ID instead of executing.
+servers:
+  - url: http://localhost:3000/api/v1
+security:
+  - departmentKey: []
+tags:
+  - { name: public, description: Storefront calls, no key }
+  - { name: orders }
+  - { name: fulfilment }
+  - { name: finance }
+  - { name: marketing }
+  - { name: support }
+  - { name: approvals }
+  - { name: platform }
+paths:
+  /health:
+    get:
+      tags: [platform]
+      security: []
+      responses: { '200': { description: OK } }
+
+  # ---------- public ----------
+  /catalog/products:
+    get:
+      tags: [public]
+      security: []
+      parameters:
+        - { name: collection, in: query, schema: { type: string } }
+      responses:
+        '200': { description: Products, content: { application/json: { schema: { type: array, items: { $ref: '#/components/schemas/Product' } } } } }
+  /catalog/products/{slug}:
+    get:
+      tags: [public]
+      security: []
+      parameters: [ { name: slug, in: path, required: true, schema: { type: string } } ]
+      responses:
+        '200': { description: Product, content: { application/json: { schema: { $ref: '#/components/schemas/Product' } } } }
+        '404': { $ref: '#/components/responses/NotFound' }
+  /checkout:
+    post:
+      tags: [public]
+      security: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [items, customer]
+              properties:
+                items: { type: array, items: { type: object, required: [sku, qty], properties: { sku: { type: string }, qty: { type: integer, minimum: 1, maximum: 10 } } } }
+                customer: { $ref: '#/components/schemas/CustomerInput' }
+                discountCode: { type: string }
+                source: { type: string, enum: [web, generator], default: web }
+      responses:
+        '201':
+          description: Order placed; pay at paymentUrl
+          content: { application/json: { schema: { type: object, properties: { orderNumber: { type: string }, totalPaise: { type: integer }, paymentUrl: { type: string } } } } }
+        '422': { $ref: '#/components/responses/Invalid' }
+  /orders/track:
+    get:
+      tags: [public]
+      security: []
+      parameters:
+        - { name: number, in: query, required: true, schema: { type: string } }
+        - { name: email, in: query, required: true, schema: { type: string, format: email } }
+      responses:
+        '200': { description: Order status timeline, content: { application/json: { schema: { $ref: '#/components/schemas/Order' } } } }
+        '404': { $ref: '#/components/responses/NotFound' }
+  /tickets:
+    post:
+      tags: [public]
+      security: []
+      summary: Contact form or return request from the website
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { type: object, required: [email, type, message], properties: { email: { type: string }, orderNumber: { type: string }, type: { type: string, enum: [wismo, exchange, return, complaint, other] }, message: { type: string, maxLength: 2000 } } }
+      responses: { '201': { description: Ticket created } }
+    get:
+      tags: [support]
+      parameters: [ { name: status, in: query, schema: { type: string, enum: [open, waiting, closed] } } ]
+      responses: { '200': { description: Tickets, content: { application/json: { schema: { type: array, items: { $ref: '#/components/schemas/Ticket' } } } } } }
+
+  # ---------- orders ----------
+  /orders:
+    get:
+      tags: [orders]
+      parameters:
+        - { name: status, in: query, schema: { $ref: '#/components/schemas/OrderStatus' } }
+        - { name: limit, in: query, schema: { type: integer, default: 50, maximum: 200 } }
+      responses: { '200': { description: Orders, content: { application/json: { schema: { type: array, items: { $ref: '#/components/schemas/Order' } } } } } }
+  /orders/{number}:
+    get:
+      tags: [orders]
+      parameters: [ { $ref: '#/components/parameters/OrderNumber' } ]
+      responses:
+        '200': { description: Order, content: { application/json: { schema: { $ref: '#/components/schemas/Order' } } } }
+        '404': { $ref: '#/components/responses/NotFound' }
+  /orders/{number}/cancel:
+    post:
+      tags: [fulfilment, support]
+      summary: Cancel before printing starts; triggers a full refund
+      parameters: [ { $ref: '#/components/parameters/OrderNumber' } ]
+      responses:
+        '200': { description: Cancelled }
+        '409': { $ref: '#/components/responses/Conflict' }
+
+  # ---------- fulfilment ----------
+  /print-jobs:
+    get:
+      tags: [fulfilment]
+      parameters: [ { name: status, in: query, schema: { type: string } } ]
+      responses: { '200': { description: Print jobs } }
+    post:
+      tags: [fulfilment]
+      requestBody: { required: true, content: { application/json: { schema: { type: object, required: [orderNumber], properties: { orderNumber: { type: string } } } } } }
+      responses: { '201': { description: Sent to PrintHub }, '409': { $ref: '#/components/responses/Conflict' } }
+  /print-jobs/{id}/reprint:
+    post:
+      tags: [fulfilment]
+      parameters: [ { name: id, in: path, required: true, schema: { type: string } } ]
+      responses: { '201': { description: Reprint requested } }
+  /shipments:
+    get:
+      tags: [fulfilment]
+      parameters: [ { name: status, in: query, schema: { type: string } } ]
+      responses: { '200': { description: Shipments } }
+    post:
+      tags: [fulfilment]
+      requestBody: { required: true, content: { application/json: { schema: { type: object, required: [orderNumber], properties: { orderNumber: { type: string } } } } } }
+      responses: { '201': { description: Booked with ShipFast } }
+  /shipments/{id}/reship:
+    post:
+      tags: [fulfilment]
+      parameters: [ { name: id, in: path, required: true, schema: { type: string } } ]
+      responses:
+        '201': { description: Reship booked }
+        '202': { $ref: '#/components/responses/PendingApproval' }
+
+  # ---------- finance ----------
+  /refunds:
+    get:
+      tags: [finance]
+      responses: { '200': { description: Refunds } }
+    post:
+      tags: [finance]
+      requestBody:
+        required: true
+        content: { application/json: { schema: { type: object, required: [orderNumber, amountPaise, reason], properties: { orderNumber: { type: string }, amountPaise: { type: integer, minimum: 1 }, reason: { type: string }, ticketNumber: { type: string } } } } }
+      responses:
+        '201': { description: Refund processed with credit note }
+        '202': { $ref: '#/components/responses/PendingApproval' }
+        '409': { $ref: '#/components/responses/Conflict' }
+  /refund-requests:
+    post:
+      tags: [support]
+      summary: Support asks Finance for a refund (does not move money)
+      requestBody: { required: true, content: { application/json: { schema: { type: object, required: [orderNumber, amountPaise, reason], properties: { orderNumber: { type: string }, amountPaise: { type: integer }, reason: { type: string }, ticketNumber: { type: string } } } } } }
+      responses: { '201': { description: Request raised (event refund.requested) } }
+  /invoices/{number}:
+    get:
+      tags: [finance, public]
+      parameters: [ { name: number, in: path, required: true, schema: { type: string } } ]
+      responses: { '200': { description: GST tax invoice (JSON; add Accept text/html for printable view) } }
+  /partner-invoices:
+    get:
+      tags: [finance]
+      parameters: [ { name: status, in: query, schema: { type: string } } ]
+      responses: { '200': { description: Partner invoices } }
+  /partner-invoices/{id}/verify:
+    post:
+      tags: [finance]
+      summary: Compare invoice lines to the app's records; returns mismatches
+      parameters: [ { name: id, in: path, required: true, schema: { type: string } } ]
+      responses: { '200': { description: Verification result with mismatched lines } }
+  /partner-invoices/{id}/pay:
+    post:
+      tags: [finance]
+      parameters: [ { name: id, in: path, required: true, schema: { type: string } } ]
+      responses:
+        '200': { description: Paid; ledger updated }
+        '202': { $ref: '#/components/responses/PendingApproval' }
+  /partner-invoices/{id}/dispute:
+    post:
+      tags: [finance]
+      parameters: [ { name: id, in: path, required: true, schema: { type: string } } ]
+      requestBody: { required: true, content: { application/json: { schema: { type: object, required: [reason], properties: { reason: { type: string } } } } } }
+      responses: { '200': { description: Disputed } }
+  /ledger:
+    get:
+      tags: [finance]
+      parameters:
+        - { name: from, in: query, schema: { type: string, format: date } }
+        - { name: to, in: query, schema: { type: string, format: date } }
+        - { name: account, in: query, schema: { type: string } }
+      responses: { '200': { description: Ledger entries } }
+  /reports/pnl:
+    get:
+      tags: [finance]
+      parameters: [ { name: date, in: query, schema: { type: string, format: date } } ]
+      responses: { '200': { description: Daily profit and loss } }
+  /reports/gst:
+    get:
+      tags: [finance]
+      parameters: [ { name: month, in: query, schema: { type: string, example: '2026-11' } } ]
+      responses: { '200': { description: GST summary (GSTR-1/3B shaped) } }
+
+  # ---------- marketing ----------
+  /discount-codes:
+    get: { tags: [marketing], responses: { '200': { description: Codes } } }
+    post:
+      tags: [marketing]
+      requestBody: { required: true, content: { application/json: { schema: { type: object, required: [code, percent, endsAt], properties: { code: { type: string }, percent: { type: integer, minimum: 1, maximum: 50 }, startsAt: { type: string, format: date-time }, endsAt: { type: string, format: date-time } } } } } }
+      responses:
+        '201': { description: Created }
+        '202': { $ref: '#/components/responses/PendingApproval' }
+  /campaigns:
+    get: { tags: [marketing], responses: { '200': { description: Campaigns with spend and results } } }
+    post:
+      tags: [marketing]
+      requestBody: { required: true, content: { application/json: { schema: { type: object, required: [name, channel, budgetPaise], properties: { name: { type: string }, channel: { type: string, enum: [instagram, google, influencer] }, budgetPaise: { type: integer }, startsAt: { type: string }, endsAt: { type: string } } } } } }
+      responses:
+        '201': { description: Created }
+        '202': { $ref: '#/components/responses/PendingApproval' }
+
+  # ---------- support ----------
+  /tickets/{number}:
+    get:
+      tags: [support]
+      parameters: [ { name: number, in: path, required: true, schema: { type: string } } ]
+      responses: { '200': { description: Ticket, content: { application/json: { schema: { $ref: '#/components/schemas/Ticket' } } } } }
+  /tickets/{number}/reply:
+    post:
+      tags: [support]
+      parameters: [ { name: number, in: path, required: true, schema: { type: string } } ]
+      requestBody: { required: true, content: { application/json: { schema: { type: object, required: [message], properties: { message: { type: string }, close: { type: boolean, default: false } } } } } }
+      responses: { '200': { description: Reply sent to the in-app email outbox } }
+  /returns:
+    post:
+      tags: [support]
+      requestBody: { required: true, content: { application/json: { schema: { type: object, required: [orderNumber, reason], properties: { orderNumber: { type: string }, reason: { type: string, enum: [size, defect, other] }, ticketNumber: { type: string } } } } } }
+      responses: { '201': { description: Return pickup booked }, '409': { $ref: '#/components/responses/Conflict' } }
+
+  # ---------- approvals ----------
+  /approvals:
+    get:
+      tags: [approvals]
+      parameters: [ { name: status, in: query, schema: { type: string, enum: [pending, approved, rejected, expired] } } ]
+      responses: { '200': { description: Approval requests, content: { application/json: { schema: { type: array, items: { $ref: '#/components/schemas/Approval' } } } } } }
+  /approvals/{id}:
+    get:
+      tags: [approvals]
+      parameters: [ { name: id, in: path, required: true, schema: { type: string, example: APR-7 } } ]
+      responses: { '200': { description: Approval, content: { application/json: { schema: { $ref: '#/components/schemas/Approval' } } } } }
+  /approvals/{id}/decision:
+    post:
+      tags: [approvals]
+      summary: Founder key only
+      parameters: [ { name: id, in: path, required: true, schema: { type: string } } ]
+      requestBody: { required: true, content: { application/json: { schema: { type: object, required: [decision], properties: { decision: { type: string, enum: [approve, reject] }, reason: { type: string } } } } } }
+      responses:
+        '200': { description: Decision recorded; action executed on approve }
+        '403': { description: Not the founder key }
+        '409': { $ref: '#/components/responses/Conflict' }
+
+  # ---------- platform ----------
+  /events:
+    get:
+      tags: [platform]
+      parameters:
+        - { name: after, in: query, schema: { type: integer, default: 0 } }
+        - { name: limit, in: query, schema: { type: integer, default: 100, maximum: 500 } }
+      responses: { '200': { description: Events in order, content: { application/json: { schema: { type: array, items: { $ref: '#/components/schemas/Event' } } } } } }
+  /flags:
+    get: { tags: [platform], responses: { '200': { description: Feature flags } } }
+  /flags/{key}:
+    put:
+      tags: [platform]
+      parameters: [ { name: key, in: path, required: true, schema: { type: string } } ]
+      requestBody: { required: true, content: { application/json: { schema: { type: object, required: [enabled], properties: { enabled: { type: boolean } } } } } }
+      responses: { '200': { description: Updated } }
+  /webhooks/{partner}:
+    post:
+      tags: [platform]
+      security: []
+      summary: Partner webhooks; verified by X-SG-Signature HMAC
+      parameters:
+        - { name: partner, in: path, required: true, schema: { type: string, enum: [paymock, printhub, shipfast] } }
+        - { name: X-SG-Signature, in: header, required: true, schema: { type: string } }
+      responses: { '200': { description: Accepted (idempotent) }, '401': { description: Bad signature } }
+
+components:
+  securitySchemes:
+    departmentKey:
+      type: http
+      scheme: bearer
+      description: 'sg_<department>_<random>; scopes per docs/architecture.md'
+  parameters:
+    OrderNumber: { name: number, in: path, required: true, schema: { type: string, example: ORD-1042 } }
+  responses:
+    NotFound: { description: Not found, content: { application/json: { schema: { $ref: '#/components/schemas/Error' } } } }
+    Invalid: { description: Validation failed, content: { application/json: { schema: { $ref: '#/components/schemas/Error' } } } }
+    Conflict: { description: Not allowed in the current state, content: { application/json: { schema: { $ref: '#/components/schemas/Error' } } } }
+    PendingApproval:
+      description: Over a limit; waiting for the founder
+      content: { application/json: { schema: { type: object, properties: { approvalId: { type: string, example: APR-7 }, status: { const: pending } } } } }
+  schemas:
+    Error:
+      type: object
+      required: [error]
+      properties: { error: { type: string }, details: { type: object } }
+    OrderStatus:
+      type: string
+      enum: [placed, paid, printing, shipped, delivered, cancelled, returned, refunded]
+    CustomerInput:
+      type: object
+      required: [name, email, phone, address, city, state, pincode]
+      properties:
+        name: { type: string }
+        email: { type: string, format: email }
+        phone: { type: string }
+        address: { type: string }
+        city: { type: string }
+        state: { type: string }
+        pincode: { type: string, pattern: '^[1-9][0-9]{5}$' }
+    Product:
+      type: object
+      properties:
+        slug: { type: string }
+        name: { type: string }
+        collection: { type: string }
+        description: { type: string }
+        artworkUrl: { type: string }
+        variants: { type: array, items: { type: object, properties: { sku: { type: string }, fit: { type: string }, colour: { type: string }, size: { type: string }, pricePaise: { type: integer } } } }
+    Order:
+      type: object
+      properties:
+        number: { type: string }
+        status: { $ref: '#/components/schemas/OrderStatus' }
+        items: { type: array, items: { type: object, properties: { sku: { type: string }, qty: { type: integer }, unitPricePaise: { type: integer } } } }
+        subtotalPaise: { type: integer }
+        discountPaise: { type: integer }
+        shippingPaise: { type: integer }
+        taxPaise: { type: integer }
+        totalPaise: { type: integer }
+        timeline: { type: array, items: { type: object, properties: { status: { type: string }, at: { type: string } } } }
+        printJob: { type: object }
+        shipment: { type: object }
+        invoiceNumber: { type: string }
+    Ticket:
+      type: object
+      properties:
+        number: { type: string }
+        orderNumber: { type: string }
+        type: { type: string }
+        status: { type: string }
+        messages: { type: array, items: { type: object, properties: { from: { type: string }, body: { type: string }, at: { type: string } } } }
+    Approval:
+      type: object
+      properties:
+        id: { type: string }
+        department: { type: string }
+        action: { type: string, example: refund.create }
+        payload: { type: object }
+        amountPaise: { type: integer }
+        reason: { type: string }
+        status: { type: string, enum: [pending, approved, rejected, expired] }
+        decidedBy: { type: string }
+        decidedAt: { type: string }
+    Event:
+      type: object
+      properties:
+        seq: { type: integer }
+        type: { type: string, example: order.paid }
+        entityType: { type: string }
+        entityId: { type: string }
+        payload: { type: object }
+        createdAt: { type: string }
