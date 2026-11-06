@@ -4,8 +4,7 @@ How to use this file:
 
 - Work only on tasks assigned to you (Owner). Pick the lowest-numbered `todo` task whose
   dependencies are `done`, unless the founder says otherwise.
-- Set Status to `doing` when you start (in your branch) and `review` when the PR is open.
-  The founder sets `done` on merge.
+- Set Status to `done` in your PR; it becomes true when the founder merges.
 - One task = one branch = one PR (`t-07-paymock`). Use the `implement-task` skill.
 - Acceptance criteria (AC) are the definition of done, together with AGENTS.md.
 - Priority: **MVP** must ship for the demo; **Stretch** only if time allows.
@@ -14,8 +13,8 @@ How to use this file:
 
 | ID | Title | Owner | Depends on | Priority | Status |
 | --- | --- | --- | --- | --- | --- |
-| T-01 | Monorepo skeleton, Docker Compose, CI | builder | — | MVP | review |
-| T-02 | Database schema and migrations | builder | T-01 | MVP | review |
+| T-01 | Monorepo skeleton, Docker Compose, CI | builder | — | MVP | done |
+| T-02 | Database schema and migrations | builder | T-01 | MVP | done |
 | T-03 | Seed data and demo reset | builder | T-02 | MVP | todo |
 | T-04 | Shared package: money, GST, events, clock | builder | T-01 | MVP | todo |
 | T-05 | Storefront pages | builder | T-03 | MVP | todo |

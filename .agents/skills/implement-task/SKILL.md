@@ -24,7 +24,7 @@ description: Pick up a task from docs/tasks.md and deliver it as one branch and 
    - Title: `T-NN: summary`
    - Body: what changed, how to test (exact commands), AC checklist with each item ticked,
      and `Closes T-NN`.
-   Set Status to `review` in `docs/tasks.md` in the same PR.
+   Set Status to `done` in `docs/tasks.md` in the same PR; it becomes true when the founder merges.
 8. **Hand off.** Post in `#engineering`: "`@reviewer` T-NN is ready: <PR link>. Main risk: <one line>."
 9. **Respond to review.** Fix requested changes on the same branch, reply to each comment,
    and ping `@reviewer` again. Never merge; the founder merges.
