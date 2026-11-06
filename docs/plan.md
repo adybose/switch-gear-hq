@@ -15,10 +15,12 @@ Free Slack workspace "Switch Gear". Agent name autocomplete is OFF (paid-only fe
 | `#finance` | Finance | Refunds, invoices, payouts, settlements, GST, P&L | `@finance` |
 | `#marketing` | Marketing | Campaigns, posts, discount codes, ad budget | `@marketing` |
 | `#support` | Customer Support | Tickets, returns, exchanges, order tracking | `@support` |
+| `#research` | Research | Market, partner, tool and codebase questions from any room | `@researcher` |
 | `#events` | All (read-only) | Every store event, in order; nobody replies | `@gatekeeper` posts |
 
 Room links: `#support → #finance` (refunds), `#support → #fulfilment` (delivery issues),
-every room → `#engineering` (bugs), every room → `#approvals` (over-limit actions).
+every room → `#engineering` (bugs), every room → `#approvals` (over-limit actions),
+every room → `#research` (questions).
 
 ## Agents (each holds a Switch role; work is addressed to the role)
 
@@ -31,6 +33,7 @@ every room → `#engineering` (bugs), every room → `#approvals` (over-limit ac
 | Finance Controller | `@finance` | Claude Code | `#finance` | Change prices; pay above its limit |
 | Marketing Lead | `@marketing` | Claude Code | `#marketing` | Raise budget or publish designs without approval |
 | Support Agent | `@support` | Codex | `#support` | Refund directly; promise outside policy |
+| Researcher | `@researcher` | Claude Code | `#research` | Change repo files; call the store API; decide for the business |
 | Gatekeeper | `@gatekeeper` | Custom Node.js, no AI | `#events` | Make decisions |
 
 Three limits on every agent: role instructions (`agents/<role>/AGENTS.md`; builder and reviewer: `agents/external/<role>/AGENTS.md`), its department API key,
@@ -44,6 +47,7 @@ and the store's approval gates.
 | Reviewer | `~/repos/switch-gear-hq-worktrees/reviewer` (git worktree) | git, gh, test runner |
 | Fulfilment, Finance, Marketing, Support | `~/repos/switch-gear-hq/agents/<role>/` | `sg` CLI with that department's key |
 | Chief of Staff | `~/repos/switch-gear-hq/agents/chief-of-staff/` | `sg` read-only across departments |
+| Researcher | `~/repos/switch-gear-hq/agents/researcher/` | Web search, repo read-only (no `sg` CLI) |
 | Gatekeeper | Docker container `gatekeeper` | Switch agent protocol, founder key |
 | Store, sim, db | Docker Compose, `localhost:3000` | — |
 
@@ -67,7 +71,7 @@ Approval flow:
 2. Planning files: spec, architecture + OpenAPI, AGENTS.md/CLAUDE.md, tasks, engineering skills.
 3. Store core: skeleton, schema + seed, storefront, checkout + PayMock, tracking, admin, API keys, approval gates, event outbox.
 4. Partners and money: PrintHub, ShipFast, order generator, demo clock, ledger, invoices, refunds, payouts, P&L, `sg` CLI.
-5. Switch org live: Gatekeeper, role + room files, business skills, Switch template, 8 channels, 7 AI agents onboarded.
+5. Switch org live: Gatekeeper, role + room files, business skills, Switch template, 9 channels, 8 AI agents onboarded.
 6. Scenarios + rehearsal: misprint spike, checkout bug, invoice mismatch; two full demo runs.
 7. Submit: README, 3–5 min demo video, submission; optional blog and #HowISwitch post.
 

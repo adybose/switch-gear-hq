@@ -223,8 +223,8 @@ Reviewer (`@reviewer`) reviews every builder PR with the `review-pr` skill.
 
 ### T-25 Role, room and business skill files; agent folders
 
-- AC: a role file for all 7 AI roles: `agents/<role>/AGENTS.md`, or `agents/external/<role>/AGENTS.md` for
-  builder and reviewer; `rooms/<channel>.md` for all 8 channels (see `docs/plan.md`).
+- AC: a role file for all 8 AI roles: `agents/<role>/AGENTS.md`, or `agents/external/<role>/AGENTS.md` for
+  builder and reviewer; `rooms/<channel>.md` for all 9 channels (see `docs/plan.md`).
 - AC: business skills in `.agents/skills/` (list in the plan doc), each with `name` + `description`.
 - AC: `agents/{chief-of-staff,fulfilment,finance,marketing,support}/` each with `AGENTS.md`, `CLAUDE.md`
   (`@AGENTS.md`) and `.env.example`; `agents/external/{builder,reviewer}/` each with `AGENTS.md`
@@ -233,7 +233,7 @@ Reviewer (`@reviewer`) reviews every builder PR with the `review-pr` skill.
 ### T-26 Switch template and onboarding (founder)
 
 - AC: `switch/switch-gear.template.yaml` creates rooms, roles and agents; tested on a fresh server.
-- AC: all 8 channels exist in Slack and each agent answers `!agents-greet`.
+- AC: all 9 channels exist in Slack and each agent answers `!agents-greet`.
 
 ### T-27 Scenario buttons
 
