@@ -110,7 +110,8 @@ Ledger accounts: Bank, Gateway receivable, Sales, Shipping income, Discounts, Re
 costs, Shipping costs, Gateway fees, Marketing spend, GST output payable, GST input credit,
 PrintHub payable, ShipFast payable.
 
-Tax assumptions (simulation, not tax advice): tees up to ₹2,500 a piece at 5% GST, above at 18%;
+Tax assumptions (simulation, not tax advice): tees up to ₹2,500 a piece at 5% GST, above at 18%
+(₹2,500 is the pre-GST value per piece after discounts, i.e. up to ₹2,625 including 5% GST);
 the shipping fee is taxed at the tee's rate; partner invoices carry 18% GST, claimed as input credit.
 
 ## 7. Departments

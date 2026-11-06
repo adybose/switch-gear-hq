@@ -27,6 +27,6 @@ Short, dated log. Newest first. Append; don't rewrite history.
 | 2026-11-07 | `.env.local.keys` is written once; reseeds and demo resets reuse its keys, and any key not in it is revoked | Agents' `sg` configs survive `demo:reset`; deleting the file rotates every key |
 | 2026-11-07 | `db:seed` only adds missing rows; `demo:reset` truncates everything (in one transaction) and seeds | Seeding a live DB never clobbers changes; reset is repeatable |
 | 2026-11-07 | Vitest runs test files one at a time; with `DATABASE_URL` set, `npm test` leaves the DB in the demo seed state | DB tests share one Postgres and the reset test truncates it |
-| 2026-11-07 | The ₹2,500 GST limit applies to the per-piece price before GST (at 5%); tax is the inclusive price minus the rounded taxable value | Spec §6 is silent on which side of GST; this way the parts always add back up to the price |
+| 2026-11-07 | The ₹2,500 GST limit is the pre-GST value per piece (founder decision; up to ₹2,625 including 5% GST); tax is the inclusive price minus the rounded taxable value | Matches how apparel GST works; the parts always add back up to the price |
 | 2026-11-07 | Intra-state GST splits into equal CGST/SGST halves, odd paisa to SGST | Integer paise; deterministic |
 | 2026-11-07 | The business clock syncs with the sim every 5 s and runs forward locally in between; real time if the sim is down | No sim call per request; the store keeps working without the sim |
