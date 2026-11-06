@@ -1,0 +1,496 @@
+// Switch Gear store schema. Models follow docs/architecture.md (Data model).
+// Money is always Int paise. Timestamps are UTC. Human-facing IDs (ORD-1042, APR-7, ...)
+// live in `number` columns; primary keys are internal cuids.
+//
+// Database-level checks the Prisma schema can't express (non-negative money, ledger
+// balance) are added by hand in the migrations. Keep them when generating new migrations.
+
+generator client {
+  provider = "prisma-client"
+  output   = "../src/generated/prisma"
+}
+
+datasource db {
+  provider = "postgresql"
+}
+
+// ---------- enums ----------
+
+enum Department {
+  fulfilment
+  finance
+  marketing
+  support
+  engineering
+  hq
+  founder
+}
+
+enum ProductStatus {
+  draft
+  published
+}
+
+enum Fit {
+  classic
+  oversized
+  premium
+}
+
+enum OrderStatus {
+  placed
+  paid
+  printing
+  shipped
+  delivered
+  cancelled
+  returned
+  refunded
+}
+
+enum OrderSource {
+  web
+  generator
+}
+
+enum PaymentStatus {
+  created
+  captured
+  failed
+}
+
+enum RefundStatus {
+  requested
+  pending_approval
+  processed
+  rejected
+}
+
+enum PrintJobStatus {
+  received
+  in_production
+  quality_check
+  packed
+  handed_over
+  artwork_rejected
+  misprint
+  blank_out_of_stock
+}
+
+enum ShipmentStatus {
+  pickup_scheduled
+  picked_up
+  in_transit
+  out_for_delivery
+  delivered
+  delivery_failed
+  returned_to_origin
+  lost
+}
+
+enum ShippingZone {
+  same_city
+  same_zone
+  national
+}
+
+enum GstType {
+  intra
+  inter
+}
+
+enum Partner {
+  printhub
+  shipfast
+}
+
+enum PartnerInvoiceStatus {
+  received
+  verified
+  disputed
+  pending_approval
+  paid
+}
+
+enum LedgerAccount {
+  bank
+  gateway_receivable
+  sales
+  shipping_income
+  discounts
+  refunds
+  print_costs
+  shipping_costs
+  gateway_fees
+  marketing_spend
+  gst_output_payable
+  gst_input_credit
+  printhub_payable
+  shipfast_payable
+}
+
+enum DiscountCodeStatus {
+  pending_approval
+  active
+  expired
+  disabled
+}
+
+enum CampaignChannel {
+  instagram
+  google
+  influencer
+}
+
+enum CampaignStatus {
+  draft
+  pending_approval
+  active
+  paused
+  ended
+}
+
+enum TicketType {
+  wismo
+  exchange
+  return
+  complaint
+  other
+}
+
+enum TicketStatus {
+  open
+  pending
+  resolved
+  closed
+}
+
+enum ApprovalStatus {
+  pending
+  approved
+  rejected
+  expired
+}
+
+// ---------- catalogue ----------
+
+model Product {
+  id          String        @id @default(cuid())
+  slug        String        @unique
+  name        String
+  collection  String
+  description String
+  artworkUrl  String
+  status      ProductStatus @default(draft)
+  createdAt   DateTime      @default(now())
+  updatedAt   DateTime      @updatedAt
+  variants    Variant[]
+
+  @@index([collection])
+}
+
+model Variant {
+  id         String      @id @default(cuid())
+  productId  String
+  product    Product     @relation(fields: [productId], references: [id])
+  sku        String      @unique
+  fit        Fit
+  colour     String
+  size       String
+  pricePaise Int
+  active     Boolean     @default(true)
+  orderItems OrderItem[]
+
+  @@unique([productId, fit, colour, size])
+}
+
+// ---------- customers and orders ----------
+
+model Customer {
+  id        String   @id @default(cuid())
+  name      String
+  email     String
+  phone     String
+  address   String
+  city      String
+  state     String
+  pincode   String
+  createdAt DateTime @default(now())
+  orders    Order[]
+  tickets   Ticket[]
+
+  @@index([email])
+}
+
+model Order {
+  id            String           @id @default(cuid())
+  number        String           @unique
+  customerId    String
+  customer      Customer         @relation(fields: [customerId], references: [id])
+  status        OrderStatus      @default(placed)
+  subtotalPaise Int
+  discountPaise Int              @default(0)
+  shippingPaise Int              @default(0)
+  taxPaise      Int
+  totalPaise    Int
+  discountCode  String?
+  source        OrderSource      @default(web)
+  placedAt      DateTime         @default(now())
+  updatedAt     DateTime         @updatedAt
+  items         OrderItem[]
+  payments      Payment[]
+  refunds       Refund[]
+  printJobs     PrintJob[]
+  shipments     Shipment[]
+  invoice       CustomerInvoice?
+  tickets       Ticket[]
+
+  @@index([status])
+  @@index([customerId])
+}
+
+model OrderItem {
+  id             String  @id @default(cuid())
+  orderId        String
+  order          Order   @relation(fields: [orderId], references: [id])
+  variantId      String
+  variant        Variant @relation(fields: [variantId], references: [id])
+  qty            Int
+  unitPricePaise Int
+
+  @@index([orderId])
+}
+
+// ---------- payments and refunds ----------
+
+model Payment {
+  id          String        @id @default(cuid())
+  orderId     String
+  order       Order         @relation(fields: [orderId], references: [id])
+  gatewayRef  String        @unique
+  status      PaymentStatus @default(created)
+  amountPaise Int
+  feePaise    Int           @default(0)
+  createdAt   DateTime      @default(now())
+  capturedAt  DateTime?
+  settledAt   DateTime?
+
+  @@index([orderId])
+}
+
+model Refund {
+  id          String           @id @default(cuid())
+  orderId     String
+  order       Order            @relation(fields: [orderId], references: [id])
+  amountPaise Int
+  reason      String
+  status      RefundStatus     @default(requested)
+  approvalId  String?
+  approval    ApprovalRequest? @relation(fields: [approvalId], references: [id])
+  createdAt   DateTime         @default(now())
+  processedAt DateTime?
+  creditNote  CreditNote?
+
+  @@index([orderId])
+}
+
+// ---------- fulfilment ----------
+
+model PrintJob {
+  id         String         @id @default(cuid())
+  orderId    String
+  order      Order          @relation(fields: [orderId], references: [id])
+  partnerRef String?        @unique
+  status     PrintJobStatus @default(received)
+  attempt    Int            @default(1)
+  costPaise  Int
+  createdAt  DateTime       @default(now())
+  updatedAt  DateTime       @updatedAt
+
+  @@index([orderId])
+  @@index([status])
+}
+
+model Shipment {
+  id        String         @id @default(cuid())
+  orderId   String
+  order     Order          @relation(fields: [orderId], references: [id])
+  awb       String?        @unique
+  status    ShipmentStatus @default(pickup_scheduled)
+  zone      ShippingZone
+  attempts  Int            @default(0)
+  costPaise Int
+  createdAt DateTime       @default(now())
+  updatedAt DateTime       @updatedAt
+
+  @@index([orderId])
+  @@index([status])
+}
+
+// ---------- finance ----------
+
+model CustomerInvoice {
+  id           String       @id @default(cuid())
+  number       String       @unique
+  orderId      String       @unique
+  order        Order        @relation(fields: [orderId], references: [id])
+  gstType      GstType
+  taxablePaise Int
+  cgstPaise    Int          @default(0)
+  sgstPaise    Int          @default(0)
+  igstPaise    Int          @default(0)
+  issuedAt     DateTime     @default(now())
+  creditNotes  CreditNote[]
+}
+
+model CreditNote {
+  id           String          @id @default(cuid())
+  number       String          @unique
+  invoiceId    String
+  invoice      CustomerInvoice @relation(fields: [invoiceId], references: [id])
+  refundId     String          @unique
+  refund       Refund          @relation(fields: [refundId], references: [id])
+  gstType      GstType
+  taxablePaise Int
+  cgstPaise    Int             @default(0)
+  sgstPaise    Int             @default(0)
+  igstPaise    Int             @default(0)
+  issuedAt     DateTime        @default(now())
+
+  @@index([invoiceId])
+}
+
+model PartnerInvoice {
+  id          String               @id @default(cuid())
+  partner     Partner
+  partnerRef  String
+  periodStart DateTime
+  periodEnd   DateTime
+  lines       Json
+  totalPaise  Int
+  gstPaise    Int
+  status      PartnerInvoiceStatus @default(received)
+  approvalId  String?
+  approval    ApprovalRequest?     @relation(fields: [approvalId], references: [id])
+  receivedAt  DateTime             @default(now())
+  paidAt      DateTime?
+
+  @@unique([partner, partnerRef])
+  @@index([status])
+}
+
+/// One line of a double-entry transaction. All lines sharing a txnId must balance
+/// (sum of debits = sum of credits); a deferred database trigger enforces this at commit.
+/// Write only through postLedgerTxn() in src/server/ledger.ts.
+model LedgerEntry {
+  id          String        @id @default(cuid())
+  txnId       String
+  account     LedgerAccount
+  debitPaise  Int           @default(0)
+  creditPaise Int           @default(0)
+  refType     String?
+  refId       String?
+  memo        String?
+  at          DateTime      @default(now())
+
+  @@index([txnId])
+  @@index([account, at])
+  @@index([refType, refId])
+}
+
+// ---------- marketing ----------
+
+model DiscountCode {
+  id         String             @id @default(cuid())
+  code       String             @unique
+  percent    Int
+  startsAt   DateTime
+  endsAt     DateTime?
+  status     DiscountCodeStatus @default(active)
+  approvalId String?
+  approval   ApprovalRequest?   @relation(fields: [approvalId], references: [id])
+  createdAt  DateTime           @default(now())
+}
+
+model Campaign {
+  id          String          @id @default(cuid())
+  name        String
+  channel     CampaignChannel
+  budgetPaise Int
+  spentPaise  Int             @default(0)
+  startsAt    DateTime
+  endsAt      DateTime?
+  status      CampaignStatus  @default(draft)
+  createdAt   DateTime        @default(now())
+}
+
+// ---------- support ----------
+
+model Ticket {
+  id         String       @id @default(cuid())
+  number     String       @unique
+  orderId    String?
+  order      Order?       @relation(fields: [orderId], references: [id])
+  customerId String
+  customer   Customer     @relation(fields: [customerId], references: [id])
+  type       TicketType
+  status     TicketStatus @default(open)
+  messages   Json         @default("[]")
+  createdAt  DateTime     @default(now())
+  updatedAt  DateTime     @updatedAt
+
+  @@index([status])
+}
+
+// ---------- platform ----------
+
+model ApprovalRequest {
+  id              String           @id @default(cuid())
+  number          String           @unique
+  department      Department
+  action          String
+  payload         Json
+  amountPaise     Int?
+  reason          String
+  status          ApprovalStatus   @default(pending)
+  decidedBy       String?
+  decidedAt       DateTime?
+  decisionReason  String?
+  createdAt       DateTime         @default(now())
+  refunds         Refund[]
+  partnerInvoices PartnerInvoice[]
+  discountCodes   DiscountCode[]
+
+  @@index([status])
+}
+
+/// Outbox. Every state change writes one row in the same transaction as the change.
+model Event {
+  seq        Int      @id @default(autoincrement())
+  type       String
+  entityType String
+  entityId   String
+  payload    Json
+  createdAt  DateTime @default(now())
+
+  @@index([type])
+  @@index([entityType, entityId])
+}
+
+model ApiKey {
+  id         String     @id @default(cuid())
+  department Department
+  hash       String     @unique
+  createdAt  DateTime   @default(now())
+  revokedAt  DateTime?
+}
+
+model FeatureFlag {
+  key     String  @id
+  enabled Boolean @default(false)
+}
+
+model Setting {
+  key   String @id
+  value Json
+}

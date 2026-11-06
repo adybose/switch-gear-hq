@@ -48,7 +48,7 @@ IDs shown to humans are short and prefixed: `ORD-1042`, `TCK-88`, `APR-7`, `INV-
 | --- | --- |
 | Product | slug, name, collection, description, artworkUrl, status (draft, published) |
 | Variant | productId, sku, fit, colour, size, pricePaise, active |
-| Customer | name, email (`@example.com`), phone, city, state, pincode |
+| Customer | name, email (`@example.com`), phone, address, city, state, pincode |
 | Order | number, customerId, status, subtotalPaise, discountPaise, shippingPaise, taxPaise, totalPaise, discountCode, source (web, generator), placedAt |
 | OrderItem | orderId, variantId, qty, unitPricePaise |
 | Payment | orderId, gatewayRef, status, amountPaise, feePaise, capturedAt, settledAt |
@@ -57,19 +57,20 @@ IDs shown to humans are short and prefixed: `ORD-1042`, `TCK-88`, `APR-7`, `INV-
 | Shipment | orderId, awb, status, zone, attempts, costPaise |
 | CustomerInvoice | number, orderId, gstType (intra, inter), taxablePaise, cgstPaise, sgstPaise, igstPaise |
 | CreditNote | number, invoiceId, refundId, amounts as invoice |
-| PartnerInvoice | partner, periodStart, periodEnd, lines (json), totalPaise, gstPaise, status (received, verified, disputed, pending_approval, paid) |
+| PartnerInvoice | partner, partnerRef, periodStart, periodEnd, lines (json), totalPaise, gstPaise, status (received, verified, disputed, pending_approval, paid), approvalId |
 | LedgerEntry | txnId, account, debitPaise, creditPaise, refType, refId, memo, at |
-| DiscountCode | code, percent, startsAt, endsAt, status |
+| DiscountCode | code, percent, startsAt, endsAt, status, approvalId |
 | Campaign | name, channel, budgetPaise, spentPaise, startsAt, endsAt, status |
 | Ticket | number, orderId?, customerId, type (wismo, exchange, return, complaint, other), status, messages (json) |
-| ApprovalRequest | number, department, action, payload (json), amountPaise?, reason, status (pending, approved, rejected, expired), decidedBy, decidedAt |
+| ApprovalRequest | number, department, action, payload (json), amountPaise?, reason, status (pending, approved, rejected, expired), decidedBy, decidedAt, decisionReason |
 | Event | seq (autoincrement), type, entityType, entityId, payload (json), createdAt |
 | ApiKey | department, hash, createdAt, revokedAt |
 | FeatureFlag | key, enabled |
 | Setting | key, value (demo clock speed, budgets, limits) |
 
-Ledger rule: all entries for one `txnId` must sum to zero (debits = credits). A database check
-plus a unit test enforce it.
+Ledger rule: all entries for one `txnId` must sum to zero (debits = credits). Enforced by
+`postLedgerTxn()` in `apps/store/src/server/ledger.ts`, a deferred database trigger checked at
+commit, and tests for both. All money columns also have non-negative `CHECK` constraints.
 
 ## Events (outbox)
 

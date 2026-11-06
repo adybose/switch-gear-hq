@@ -10,6 +10,7 @@
     "packages/*"
   ],
   "scripts": {
+    "postinstall": "npm run db:generate -w @switch-gear/store",
     "dev": "sh scripts/dev.sh",
     "build": "npm run build --workspaces --if-present",
     "lint": "eslint . && prettier --check .",
@@ -17,7 +18,7 @@
     "typecheck": "tsc -p tsconfig.json && npm run typecheck --workspaces --if-present",
     "test": "vitest run",
     "test:e2e": "playwright test",
-    "db:migrate": "node scripts/not-yet.mjs db:migrate T-02",
+    "db:migrate": "npm run db:migrate -w @switch-gear/store",
     "db:seed": "node scripts/not-yet.mjs db:seed T-03",
     "demo:reset": "node scripts/not-yet.mjs demo:reset T-03"
   },

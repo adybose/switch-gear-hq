@@ -18,3 +18,7 @@ Short, dated log. Newest first. Append; don't rewrite history.
 | 2026-11-07 | One root `Dockerfile` with a target per service; sim and gatekeeper run TS via `tsx` | No per-app build step; workspaces share one `npm ci` layer |
 | 2026-11-07 | Workspace packages export TypeScript source (no build); Next transpiles `@switch-gear/shared` | Fewer moving parts for a hackathon monorepo |
 | 2026-11-07 | Prettier skips Markdown, `docs/`, `api/` and agent folders | Don't reformat hand-written docs and the API contract |
+| 2026-11-07 | Prisma 7 with the `pg` driver adapter; client generated to `apps/store/src/generated` on `npm install` | No native engine download; works on Node 20 and Alpine |
+| 2026-11-07 | Ledger balance enforced twice: `postLedgerTxn()` check and a deferred Postgres constraint trigger | A bug or raw write can't leave unbalanced books |
+| 2026-11-07 | DB tests skip without `DATABASE_URL`; CI runs them against a Postgres service | `npm test` still passes on a fresh clone with no database |
+| 2026-11-07 | Store container runs `prisma migrate deploy` on start | `docker compose up` works on a fresh clone without extra steps |
