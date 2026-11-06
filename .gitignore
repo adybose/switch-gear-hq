@@ -11,3 +11,7 @@ agents/**/.env
 .env.local.keys
 .DS_Store
 *.log
+
+# Per-worktree agent role links (symlinks to agents/external/<role>/AGENTS.md)
+CLAUDE.local.md
+AGENTS.override.md
