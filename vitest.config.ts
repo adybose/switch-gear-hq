@@ -8,5 +8,7 @@ if (existsSync('.env')) process.loadEnvFile('.env');
 export default defineConfig({
   test: {
     include: ['apps/*/src/**/*.test.ts', 'packages/*/src/**/*.test.ts'],
+    // Database tests share one Postgres and the demo reset truncates it: run files one by one.
+    fileParallelism: false,
   },
 });

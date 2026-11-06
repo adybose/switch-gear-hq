@@ -23,3 +23,7 @@ Short, dated log. Newest first. Append; don't rewrite history.
 | 2026-11-07 | DB tests skip without `DATABASE_URL`; CI runs them against a Postgres service | `npm test` still passes on a fresh clone with no database |
 | 2026-11-07 | Store container runs `prisma migrate deploy` on start | `docker compose up` works on a fresh clone without extra steps |
 | 2026-11-07 | A test checks Prisma enums against `api/openapi.yaml`; CI fails if migrations drift from `schema.prisma` | Contract and database stay in step |
+| 2026-11-07 | Founder login is a `founder.login` Setting row (email + scrypt hash), not a User table | One account; no schema change for it |
+| 2026-11-07 | `.env.local.keys` is written once; reseeds and demo resets reuse its keys, and any key not in it is revoked | Agents' `sg` configs survive `demo:reset`; deleting the file rotates every key |
+| 2026-11-07 | `db:seed` only adds missing rows; `demo:reset` truncates everything (in one transaction) and seeds | Seeding a live DB never clobbers changes; reset is repeatable |
+| 2026-11-07 | Vitest runs test files one at a time; with `DATABASE_URL` set, `npm test` leaves the DB in the demo seed state | DB tests share one Postgres and the reset test truncates it |

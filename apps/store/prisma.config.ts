@@ -1,7 +1,8 @@
 import { defineConfig } from 'prisma/config';
+import { LOCAL_DATABASE_URL, loadRootEnv } from './src/server/env';
 
-// Falls back to the test-only local database from .env.example / docker-compose.yml.
-const LOCAL_DATABASE_URL = 'postgresql://switchgear:switchgear-test-only@localhost:5432/switchgear';
+// Uses DATABASE_URL from the shell or the repo-root .env, else the test-only local database.
+loadRootEnv();
 
 export default defineConfig({
   schema: 'prisma/schema.prisma',
