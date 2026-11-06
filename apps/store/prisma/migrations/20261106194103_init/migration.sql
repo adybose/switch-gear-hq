@@ -53,7 +53,7 @@ CREATE TYPE "CampaignStatus" AS ENUM ('draft', 'pending_approval', 'active', 'pa
 CREATE TYPE "TicketType" AS ENUM ('wismo', 'exchange', 'return', 'complaint', 'other');
 
 -- CreateEnum
-CREATE TYPE "TicketStatus" AS ENUM ('open', 'pending', 'resolved', 'closed');
+CREATE TYPE "TicketStatus" AS ENUM ('open', 'waiting', 'closed');
 
 -- CreateEnum
 CREATE TYPE "ApprovalStatus" AS ENUM ('pending', 'approved', 'rejected', 'expired');

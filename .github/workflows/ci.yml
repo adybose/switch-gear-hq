@@ -31,4 +31,5 @@ jobs:
       - run: npm run lint
       - run: npm run typecheck
       - run: npm run db:migrate
+      - run: npm run db:check -w @switch-gear/store # migrations match schema.prisma
       - run: npm test

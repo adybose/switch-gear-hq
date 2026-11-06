@@ -22,3 +22,4 @@ Short, dated log. Newest first. Append; don't rewrite history.
 | 2026-11-07 | Ledger balance enforced twice: `postLedgerTxn()` check and a deferred Postgres constraint trigger | A bug or raw write can't leave unbalanced books |
 | 2026-11-07 | DB tests skip without `DATABASE_URL`; CI runs them against a Postgres service | `npm test` still passes on a fresh clone with no database |
 | 2026-11-07 | Store container runs `prisma migrate deploy` on start | `docker compose up` works on a fresh clone without extra steps |
+| 2026-11-07 | A test checks Prisma enums against `api/openapi.yaml`; CI fails if migrations drift from `schema.prisma` | Contract and database stay in step |
