@@ -1,4 +1,8 @@
 {
   "extends": "./tsconfig.base.json",
+  "compilerOptions": {
+    // e2e tests run snippets in the browser (page.evaluate).
+    "lib": ["ES2023", "DOM"]
+  },
   "include": ["*.ts", "e2e/**/*.ts"]
 }
