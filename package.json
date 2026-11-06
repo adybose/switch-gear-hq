@@ -19,8 +19,8 @@
     "test": "vitest run",
     "test:e2e": "playwright test",
     "db:migrate": "npm run db:migrate -w @switch-gear/store",
-    "db:seed": "node scripts/not-yet.mjs db:seed T-03",
-    "demo:reset": "node scripts/not-yet.mjs demo:reset T-03"
+    "db:seed": "npm run db:seed -w @switch-gear/store",
+    "demo:reset": "npm run demo:reset -w @switch-gear/store"
   },
   "devDependencies": {
     "@eslint/js": "^10.0.1",

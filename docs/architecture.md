@@ -26,8 +26,11 @@ API and HMAC-signed webhooks, exactly like a real partner would.
 
 ## Auth and API keys
 
-- Admin console: founder login (seeded test account, credentials in `.env.example`).
-- API: `Authorization: Bearer sg_<department>_<random>`. Keys are stored hashed.
+- Admin console: founder login (seeded test account, credentials in `.env.example`), stored as
+  the `founder.login` Setting with an scrypt password hash.
+- API: `Authorization: Bearer sg_<department>_<random>`. Keys are stored hashed (SHA-256). The seed
+  writes the plaintext keys once to `.env.local.keys` (git-ignored); later seeds and demo resets
+  reuse them, so agents keep working keys.
 - Scopes per department (enforced in middleware):
 
 | Key | Read | Write |

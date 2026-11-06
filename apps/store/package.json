@@ -11,7 +11,9 @@
     "db:generate": "prisma generate",
     "db:migrate": "prisma migrate deploy",
     "db:migrate:dev": "prisma migrate dev",
-    "db:check": "prisma migrate diff --from-config-datasource --to-schema prisma/schema.prisma --exit-code"
+    "db:check": "prisma migrate diff --from-config-datasource --to-schema prisma/schema.prisma --exit-code",
+    "db:seed": "tsx scripts/seed.ts",
+    "demo:reset": "tsx scripts/seed.ts --reset"
   },
   "dependencies": {
     "@prisma/adapter-pg": "^7.10.1",
