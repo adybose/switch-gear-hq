@@ -227,8 +227,8 @@ Reviewer (`@reviewer`) reviews every builder PR with the `review-pr` skill.
   builder and reviewer; `rooms/<channel>.md` for all 9 channels (see `docs/plan.md`).
 - AC: business skills in `.agents/skills/` (list in the plan doc), each with `name` + `description`.
 - AC: `agents/{chief-of-staff,fulfilment,finance,marketing,support}/` each with `AGENTS.md`, `CLAUDE.md`
-  (`@AGENTS.md`) and `.env.example`; `agents/external/{builder,reviewer}/` each with `AGENTS.md`
-  and `CLAUDE.md`.
+  (`@AGENTS.md`) and `.env.example`; `agents/researcher/` and `agents/external/{builder,reviewer}/`
+  each with `AGENTS.md` and `CLAUDE.md` (no `.env.example`: they have no `sg` key).
 
 ### T-26 Switch template and onboarding (founder)
 
