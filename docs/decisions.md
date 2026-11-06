@@ -30,3 +30,6 @@ Short, dated log. Newest first. Append; don't rewrite history.
 | 2026-11-07 | The ₹2,500 GST limit is the pre-GST value per piece (founder decision; up to ₹2,625 including 5% GST); tax is the inclusive price minus the rounded taxable value | Matches how apparel GST works; the parts always add back up to the price |
 | 2026-11-07 | Intra-state GST splits into equal CGST/SGST halves, odd paisa to SGST | Integer paise; deterministic |
 | 2026-11-07 | The business clock syncs with the sim every 5 s and runs forward locally in between; real time if the sim is down | No sim call per request; the store keeps working without the sim |
+| 2026-11-07 | Storefront pages read the catalogue from Postgres per request (`connection()`); policy pages are static | `next build` needs no database; catalogue changes show immediately |
+| 2026-11-07 | Cart lives in the browser (localStorage); checkout re-prices every line on the server | No cart table or session; client prices are never trusted |
+| 2026-11-07 | Mockups are SVGs generated at `/artwork/<slug>.svg?colour=<colour>` from the design name | Original artwork only; one URL per design, as the seed stores |
