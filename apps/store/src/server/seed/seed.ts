@@ -23,7 +23,8 @@ export interface SeedResult {
 /**
  * Adds the demo starting data: catalogue, approval limits and budgets, feature flags,
  * founder login and one API key per department. Only missing rows are added, so running
- * it on a live database never overwrites changes; `resetDemo()` wipes first.
+ * it on a live database never overwrites changes; `resetDemo()` wipes first. The one
+ * exception is API keys: any key not in the keys file is revoked.
  */
 export async function seed(db: Db, options: SeedOptions): Promise<SeedResult> {
   await db.product.createMany({
@@ -67,9 +68,16 @@ export async function seed(db: Db, options: SeedOptions): Promise<SeedResult> {
     skipDuplicates: true,
   });
 
+  // The keys file is the source of truth: its keys are active, every other key is revoked.
+  // Deleting the file and reseeding therefore rotates every key.
   const { keys, created } = loadOrCreateKeys(options.keysPath);
+  const hashes = DEPARTMENTS.map((department) => hashApiKey(keys[department]));
+  await db.apiKey.updateMany({
+    where: { hash: { notIn: hashes }, revokedAt: null },
+    data: { revokedAt: new Date() },
+  });
   await db.apiKey.createMany({
-    data: DEPARTMENTS.map((department) => ({ department, hash: hashApiKey(keys[department]) })),
+    data: DEPARTMENTS.map((department, i) => ({ department, hash: hashes[i]! })),
     skipDuplicates: true,
   });
 

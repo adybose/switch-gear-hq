@@ -1,4 +1,4 @@
-import { mkdtempSync, readFileSync } from 'node:fs';
+import { mkdtempSync, readFileSync, rmSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
@@ -121,6 +121,38 @@ describe.skipIf(!process.env.DATABASE_URL)('seed and demo reset (database)', () 
 
     expect(await snapshot()).toEqual(first);
     expect(readFileSync(options.keysPath, 'utf8')).toBe(keysFile);
+  });
+
+  it('keeps the same API keys active on a normal reseed', async () => {
+    await resetDemo(db, options);
+    const before = await db.apiKey.findMany({ orderBy: { hash: 'asc' } });
+
+    await seed(db, options);
+
+    expect(await db.apiKey.findMany({ orderBy: { hash: 'asc' } })).toEqual(before);
+    expect(await db.apiKey.count({ where: { revokedAt: { not: null } } })).toBe(0);
+  });
+
+  it('revokes the old API keys when the keys file is deleted and the DB reseeded', async () => {
+    await resetDemo(db, options);
+    const oldHashes = (await db.apiKey.findMany()).map((k) => k.hash);
+
+    rmSync(options.keysPath);
+    const result = await seed(db, options);
+    expect(result.keysCreated).toHaveLength(7);
+
+    const active = await db.apiKey.findMany({ where: { revokedAt: null } });
+    const newKeys = parseKeysFile(readFileSync(options.keysPath, 'utf8'));
+    expect(active).toHaveLength(7);
+    for (const key of active) {
+      expect(key.hash).toBe(hashApiKey(newKeys[key.department]!));
+    }
+    const old = await db.apiKey.findMany({ where: { hash: { in: oldHashes } } });
+    expect(old).toHaveLength(7);
+    expect(old.every((k) => k.revokedAt !== null)).toBe(true);
+
+    await resetDemo(db, options);
+    expect(await db.apiKey.count()).toBe(7);
   });
 
   it('db:seed adds only missing rows and keeps changes', async () => {
