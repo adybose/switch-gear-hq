@@ -157,24 +157,36 @@ paths:
   /orders:
     get:
       tags: [orders]
+      description: 'Requires orders:read (fulfilment, support, hq, founder). Newest first.'
       parameters:
         - { name: status, in: query, schema: { $ref: '#/components/schemas/OrderStatus' } }
-        - { name: limit, in: query, schema: { type: integer, default: 50, maximum: 200 } }
-      responses: { '200': { description: Orders, content: { application/json: { schema: { type: array, items: { $ref: '#/components/schemas/Order' } } } } } }
+        - { name: limit, in: query, schema: { type: integer, minimum: 1, default: 50, maximum: 200 } }
+      responses:
+        '200': { description: Orders, content: { application/json: { schema: { type: array, items: { $ref: '#/components/schemas/Order' } } } } }
+        '401': { description: Missing or invalid API key, content: { application/json: { schema: { $ref: '#/components/schemas/Error' } } } }
+        '403': { $ref: '#/components/responses/Forbidden' }
+        '422': { $ref: '#/components/responses/Invalid' }
   /orders/{number}:
     get:
       tags: [orders]
+      description: 'Requires orders:read (fulfilment, support, hq, founder).'
       parameters: [ { $ref: '#/components/parameters/OrderNumber' } ]
       responses:
         '200': { description: Order, content: { application/json: { schema: { $ref: '#/components/schemas/Order' } } } }
+        '401': { description: Missing or invalid API key, content: { application/json: { schema: { $ref: '#/components/schemas/Error' } } } }
+        '403': { $ref: '#/components/responses/Forbidden' }
         '404': { $ref: '#/components/responses/NotFound' }
   /orders/{number}/cancel:
     post:
-      tags: [fulfilment, support]
+      tags: [fulfilment]
       summary: Cancel before printing starts; triggers a full refund
+      description: 'Requires order_cancel:write (fulfilment only; support asks via refund requests). Only a placed order, or a paid order with no print job, can be cancelled; anything else is 409. A paid order gets a full refund record in status requested (order total, nothing moves until T-18 processes it) plus a refund.requested event; a placed order has taken no money and gets none. Repeating the call returns 409.'
       parameters: [ { $ref: '#/components/parameters/OrderNumber' } ]
       responses:
-        '200': { description: Cancelled }
+        '200': { description: Cancelled, content: { application/json: { schema: { $ref: '#/components/schemas/Order' } } } }
+        '401': { description: Missing or invalid API key, content: { application/json: { schema: { $ref: '#/components/schemas/Error' } } } }
+        '403': { $ref: '#/components/responses/Forbidden' }
+        '404': { $ref: '#/components/responses/NotFound' }
         '409': { $ref: '#/components/responses/Conflict' }
 
   # ---------- fulfilment ----------
