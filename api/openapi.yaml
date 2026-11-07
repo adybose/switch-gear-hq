@@ -133,18 +133,25 @@ paths:
       tags: [public]
       security: []
       summary: Contact form or return request from the website
+      description: Creates an open ticket and ticket.created event atomically. An order is linked only when its customer email matches; other submissions still create an unlinked ticket.
       requestBody:
         required: true
         content:
           application/json:
-            schema: { type: object, required: [email, type, message], properties: { email: { type: string }, orderNumber: { type: string }, type: { type: string, enum: [wismo, exchange, return, complaint, other] }, message: { type: string, maxLength: 2000 } } }
+            schema: { type: object, required: [email, type, message], properties: { email: { type: string, format: email, maxLength: 200 }, orderNumber: { type: string, maxLength: 40 }, type: { type: string, enum: [wismo, exchange, return, complaint, other] }, message: { type: string, minLength: 1, maxLength: 2000 } } }
       responses:
         '201': { description: Ticket created, content: { application/json: { schema: { type: object, required: [ticketNumber], properties: { ticketNumber: { type: string, example: TCK-1 } } } } } }
         '422': { $ref: '#/components/responses/Invalid' }
     get:
       tags: [support]
+      summary: List the support ticket queue, newest first
+      description: Requires tickets:read (support, hq or founder). Omitting status returns all tickets. Empty queues return an empty array.
       parameters: [ { name: status, in: query, schema: { type: string, enum: [open, waiting, closed] } } ]
-      responses: { '200': { description: Tickets, content: { application/json: { schema: { type: array, items: { $ref: '#/components/schemas/Ticket' } } } } } }
+      responses:
+        '200': { description: Tickets, content: { application/json: { schema: { type: array, items: { $ref: '#/components/schemas/Ticket' } } } } }
+        '401': { description: Missing or invalid API key, content: { application/json: { schema: { $ref: '#/components/schemas/Error' } } } }
+        '403': { $ref: '#/components/responses/Forbidden' }
+        '422': { $ref: '#/components/responses/Invalid' }
 
   # ---------- orders ----------
   /orders:
@@ -583,12 +590,13 @@ components:
         invoiceNumber: { type: [string, 'null'] }
     Ticket:
       type: object
+      required: [number, orderNumber, type, status, messages]
       properties:
         number: { type: string }
-        orderNumber: { type: string }
-        type: { type: string }
-        status: { type: string }
-        messages: { type: array, items: { type: object, properties: { from: { type: string }, body: { type: string }, at: { type: string } } } }
+        orderNumber: { type: [string, 'null'] }
+        type: { type: string, enum: [wismo, exchange, return, complaint, other] }
+        status: { type: string, enum: [open, waiting, closed] }
+        messages: { type: array, items: { type: object, required: [from, body, at], properties: { from: { type: string }, body: { type: string }, at: { type: string, format: date-time } } } }
     Approval:
       type: object
       properties:

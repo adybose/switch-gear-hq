@@ -34,13 +34,15 @@ How to use this file:
 | T-19 | Partner invoices and payouts | builder | T-16, T-14 | MVP | todo |
 | T-20 | Reports: daily P&L, GST summary | builder | T-17, T-19 | MVP | todo |
 | T-21 | Discount codes, campaigns, ad simulator | builder | T-10, T-15 | Stretch (codes MVP) | todo |
-| T-22 | Tickets, ticket simulator, email outbox | builder | T-11, T-15 | MVP | todo |
+| T-22 | Tickets: contact creation and support queue (minimum) | builder | T-11, T-15 | MVP | done |
 | T-23 | `sg` CLI | builder | T-09 | MVP | done |
 | T-24 | Gatekeeper (custom Switch agent) | builder | T-08, T-10 | MVP | done |
 | T-25 | Role, room and business skill files; agent folders | builder | T-23 | MVP | done |
 | T-26 | Switch template and onboarding | founder | T-24, T-25 | MVP | todo |
 | T-27 | Scenario buttons | builder | T-15, T-19 | MVP (3 of 6) | todo |
 | T-28 | README and demo script | founder | T-26 | MVP | done |
+| T-29 | Ticket detail, replies, close and email outbox | builder | T-22 | MVP follow-up | todo |
+| T-30 | Ticket simulator | builder | T-15, T-22 | MVP follow-up | todo |
 
 Reviewer (`@reviewer`) reviews every builder PR with the `review-pr` skill.
 
@@ -194,9 +196,25 @@ Reviewer (`@reviewer`) reviews every builder PR with the `review-pr` skill.
 - AC (Stretch): campaigns with budget; ad sim converts spend to clicks and generator orders
   tagged by channel; daily `campaign.result`.
 
-### T-22 Tickets, ticket simulator, email outbox
+### T-22 Tickets: contact creation and support queue (minimum)
 
-- AC: ticket list/detail/reply/close endpoints; replies go to an in-app email outbox page.
+- Founder-scoped minimum (2026-11-07): Ticket model/migration, public creation and support listing.
+- AC: reuse the Ticket model from T-02's initial migration and the ticket number sequence
+  migration from T-11; a fresh migrated database supports ticket creation.
+- AC: public `POST /tickets` from the contact form creates an open ticket and atomic
+  `ticket.created` event; order linking requires a matching customer email (T-11).
+- AC: `GET /tickets` requires `tickets:read`, returns messages and optional order number,
+  supports open/waiting/closed status filters, and works with `sg tickets list` / `--json`.
+- Follow-ups: detail/reply/close and in-app email outbox are T-29; ticket simulator is T-30.
+
+### T-29 Ticket detail, replies, close and email outbox (follow-up)
+
+- Deferred from T-22 by founder's minimum scope; not implemented in T-22.
+- AC: ticket detail/reply/close endpoints; replies go to an in-app email outbox page.
+
+### T-30 Ticket simulator (follow-up)
+
+- Deferred from T-22 by founder's minimum scope; not implemented in T-22.
 - AC: ticket sim creates tickets at the rates in spec §9, tied to real orders.
 
 ## Phase F — Agents and Switch
