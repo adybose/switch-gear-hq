@@ -1,6 +1,7 @@
 import { formatRupees } from '@switch-gear/shared/money';
 import {
   gatewayFee,
+  isUnpaidExpired,
   PENDING_RESOLVE_WITHIN_MS,
   SETTLEMENT_AFTER_MS,
   type GatewayFee,
@@ -39,6 +40,8 @@ export interface PaymockOptions {
   schedule?: (fn: () => void, ms: number) => void;
   /** Real ms between webhook attempts after the first; a 4xx answer stops retrying. */
   retryDelaysMs?: number[];
+  /** Real time in ms, for the real-time half of the unpaid deadline. */
+  realNow?: () => number;
   /** Real ms between settlement runs; 0 turns the timer off (tests call settleDue()). */
   settleEveryMs?: number;
 }
@@ -50,6 +53,7 @@ interface Payment {
   amountPaise: number;
   returnUrl: string;
   expiresAt: Date;
+  minExpiresAt: Date;
   status: PaymockPaymentStatus;
   capturedAt?: Date;
   fee?: GatewayFee;
@@ -84,7 +88,9 @@ function isCreateBody(body: unknown): body is PaymockCreatePayment {
     typeof b.returnUrl === 'string' &&
     /^https?:\/\//.test(b.returnUrl) &&
     typeof b.expiresAt === 'string' &&
-    !Number.isNaN(Date.parse(b.expiresAt))
+    !Number.isNaN(Date.parse(b.expiresAt)) &&
+    typeof b.minExpiresAt === 'string' &&
+    !Number.isNaN(Date.parse(b.minExpiresAt))
   );
 }
 
@@ -95,6 +101,8 @@ export function registerPaymock(app: FastifyInstance, options: PaymockOptions): 
   const schedule = options.schedule ?? ((fn, ms) => void setTimeout(fn, ms).unref());
   const retryDelays = options.retryDelaysMs ?? [1000, 5000, 15000, 60000];
   const payments = new Map<string, Payment>();
+  const realNow = options.realNow ?? Date.now;
+  const expired = (p: Payment) => isUnpaidExpired(p, clock.now(), new Date(realNow()));
 
   /**
    * Sends one webhook and resolves with the first attempt's HTTP status (0 if the store
@@ -142,7 +150,7 @@ export function registerPaymock(app: FastifyInstance, options: PaymockOptions): 
   }
 
   async function capture(payment: Payment): Promise<void> {
-    if (clock.now() > payment.expiresAt) return fail(payment, 'expired');
+    if (expired(payment)) return fail(payment, 'expired');
     payment.status = 'captured';
     payment.capturedAt = clock.now();
     payment.fee = gatewayFee(payment.amountPaise);
@@ -184,7 +192,7 @@ export function registerPaymock(app: FastifyInstance, options: PaymockOptions): 
     if (!payment || payment.status !== 'created') return payment;
     if (outcome === 'success') await capture(payment);
     else if (outcome === 'failure') await fail(payment, 'declined');
-    else if (clock.now() > payment.expiresAt) await fail(payment, 'expired');
+    else if (expired(payment)) await fail(payment, 'expired');
     else {
       // Pending resolves to success some time within 5 business minutes.
       payment.status = 'pending';
@@ -256,6 +264,7 @@ export function registerPaymock(app: FastifyInstance, options: PaymockOptions): 
           amountPaise: body.amountPaise,
           returnUrl: body.returnUrl,
           expiresAt: new Date(body.expiresAt),
+          minExpiresAt: new Date(body.minExpiresAt),
           status: 'created',
         };
         payments.set(payment.gatewayRef, payment);

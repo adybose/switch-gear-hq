@@ -114,6 +114,8 @@ commit, and tests for both. All money columns also have non-negative `CHECK` con
 - The store cancels orders still `placed` 30 business minutes after checkout, but never sooner
   than 5 real minutes (measured from `Order.createdAt`, the real-time row stamp) (`order.cancelled`),
   from a timer started in `apps/store/src/instrumentation.ts`.
+- PayMock gets both halves of that deadline (`expiresAt` business, `minExpiresAt` real) and
+  applies the same `isUnpaidExpired()` rule, so it never expires a payment the store would still take.
 - Contract and fee rule: `packages/shared/src/paymock.ts`. PayMock state is in memory.
 
 ## Demo clock

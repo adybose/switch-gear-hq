@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { gatewayFee, settlementNet, unpaidDeadline } from './paymock';
+import { gatewayFee, isUnpaidExpired, settlementNet } from './paymock';
 
 describe('PayMock fee', () => {
   it('is 2% plus 18% GST on the fee, in whole paise', () => {
@@ -17,16 +17,18 @@ describe('PayMock fee', () => {
 });
 
 describe('unpaid deadline', () => {
-  const placed = new Date('2026-11-07T10:00:00.000Z');
+  const deadline = {
+    expiresAt: new Date('2026-11-07T10:30:00.000Z'), // business: placed 10:00 + 30 min
+    minExpiresAt: new Date('2026-11-07T08:05:00.000Z'), // real: created 08:00 + 5 min
+  };
+  const before = (d: Date) => new Date(d.getTime() - 1);
 
-  it('is 30 business minutes at real-time speed', () => {
-    expect(unpaidDeadline(placed, 1).toISOString()).toBe('2026-11-07T10:30:00.000Z');
-  });
-
-  it('is never less than 5 real minutes at demo speed', () => {
-    // Demo speed: 1 business day in 10 real minutes = 144×. 5 real minutes = 12 business hours.
-    expect(unpaidDeadline(placed, 144).toISOString()).toBe('2026-11-07T22:00:00.000Z');
-    // At 6× the two rules meet: 30 business minutes = 5 real minutes.
-    expect(unpaidDeadline(placed, 6).toISOString()).toBe('2026-11-07T10:30:00.000Z');
+  it('expires only once both 30 business and 5 real minutes have passed', () => {
+    expect(isUnpaidExpired(deadline, deadline.expiresAt, deadline.minExpiresAt)).toBe(true);
+    // Demo speed: a business day has gone by, but not 5 real minutes.
+    const dayLater = new Date('2026-11-08T10:00:00.000Z');
+    expect(isUnpaidExpired(deadline, dayLater, before(deadline.minExpiresAt))).toBe(false);
+    // Slow clock: 5 real minutes have gone by, but not 30 business minutes.
+    expect(isUnpaidExpired(deadline, before(deadline.expiresAt), dayLater)).toBe(false);
   });
 });

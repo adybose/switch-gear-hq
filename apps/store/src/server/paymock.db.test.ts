@@ -2,7 +2,6 @@ import {
   gatewayFee,
   UNPAID_CANCEL_AFTER_MS,
   UNPAID_CANCEL_MIN_REAL_MS,
-  unpaidDeadline,
 } from '@switch-gear/shared/paymock';
 import { signWebhook, verifyWebhook } from '@switch-gear/shared/webhooks';
 import { mkdtempSync } from 'node:fs';
@@ -342,7 +341,6 @@ describe.skipIf(!process.env.DATABASE_URL)('PayMock in the store (database)', ()
     }) as unknown as typeof globalThis.fetch;
 
     const payment = await openPayment(db, number, {
-      speed: 1,
       simUrl: 'http://sim.test',
       returnUrl: 'http://localhost:3000/orders/x',
       fetch,
@@ -355,13 +353,14 @@ describe.skipIf(!process.env.DATABASE_URL)('PayMock in the store (database)', ()
       orderNumber: number,
       amountPaise: total,
       returnUrl: 'http://localhost:3000/orders/x',
-      expiresAt: unpaidDeadline(PLACED_AT, 1).toISOString(),
+      expiresAt: businessDeadline.toISOString(),
+      minExpiresAt: (await realFloor(number)).toISOString(),
     });
 
     // Not waiting for payment any more: nothing to open.
     await cancelUnpaidOrders(db, businessDeadline, await realFloor(number));
     expect(
-      await openPayment(db, number, { speed: 1, simUrl: 'http://sim.test', returnUrl: 'x', fetch }),
+      await openPayment(db, number, { simUrl: 'http://sim.test', returnUrl: 'x', fetch }),
     ).toBeNull();
   });
 
@@ -371,7 +370,7 @@ describe.skipIf(!process.env.DATABASE_URL)('PayMock in the store (database)', ()
       throw new Error('ECONNREFUSED');
     }) as unknown as typeof globalThis.fetch;
     await expect(
-      openPayment(db, number, { speed: 1, simUrl: 'http://sim.test', returnUrl: 'x', fetch: down }),
+      openPayment(db, number, { simUrl: 'http://sim.test', returnUrl: 'x', fetch: down }),
     ).rejects.toBeInstanceOf(PaymentUnavailable);
   });
 });

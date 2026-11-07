@@ -37,12 +37,16 @@ export const UNPAID_CANCEL_AFTER_MS = 30 * MINUTE;
 export const UNPAID_CANCEL_MIN_REAL_MS = 5 * MINUTE;
 
 /**
- * The unpaid deadline in business time, for a clock running `speed` business seconds per real
- * second: the later of 30 business minutes and 5 real minutes after `placedAt`.
+ * True once an unpaid order is past both limits: 30 business minutes after `placedAt` (business
+ * time) and 5 real minutes after `createdAt` (real time). The store's timer and PayMock both use
+ * this, each with its own clocks, so neither needs to know the clock speed.
  */
-export function unpaidDeadline(placedAt: Date, speed: number): Date {
-  const wait = Math.max(UNPAID_CANCEL_AFTER_MS, UNPAID_CANCEL_MIN_REAL_MS * speed);
-  return new Date(placedAt.getTime() + wait);
+export function isUnpaidExpired(
+  deadline: { expiresAt: Date; minExpiresAt: Date },
+  businessNow: Date,
+  realNow: Date,
+): boolean {
+  return businessNow >= deadline.expiresAt && realNow >= deadline.minExpiresAt;
 }
 /** A "pending" payment resolves within this long (business time). */
 export const PENDING_RESOLVE_WITHIN_MS = 5 * MINUTE;
@@ -60,8 +64,13 @@ export interface PaymockCreatePayment {
   amountPaise: number;
   /** Where the pay page sends the customer back to. */
   returnUrl: string;
-  /** After this the payment can't be captured (the store cancels the order). */
+  /**
+   * The order's unpaid deadline: business time `placedAt` + 30 minutes (`expiresAt`) and real
+   * time order creation + 5 minutes (`minExpiresAt`). Once both have passed, the payment can't
+   * be captured; the store cancels the order at the same point.
+   */
   expiresAt: string;
+  minExpiresAt: string;
 }
 
 export type PaymockPaymentStatus = 'created' | 'pending' | 'captured' | 'failed' | 'voided';

@@ -5,13 +5,15 @@ import { buildSim } from './app';
 import type { SimClock } from './clock';
 
 const SECRET = 'test_paymock_secret';
-const T0 = new Date('2026-11-07T10:00:00.000Z').getTime();
+const T0 = new Date('2026-11-07T10:00:00.000Z').getTime(); // business time
+const R0 = new Date('2026-11-07T08:00:00.000Z').getTime(); // real time
 
 function setup({
   storeStatus = 200,
   speed = 1,
 }: { storeStatus?: number | number[]; speed?: number } = {}) {
   let nowMs = T0;
+  let realMs = R0;
   const clock: SimClock = { now: () => new Date(nowMs), speed: () => speed };
   const sent: { body: Record<string, unknown>; signed: boolean }[] = [];
   const statuses = Array.isArray(storeStatus) ? [...storeStatus] : null;
@@ -32,13 +34,19 @@ function setup({
     random: () => 1,
     schedule: (fn, ms) => scheduled.push({ fn, ms }),
     settleEveryMs: 0,
+    realNow: () => realMs,
   });
   return {
     ...sim,
     sent,
     scheduled,
+    /** Moves business time on. */
     advance: (ms: number) => {
       nowMs += ms;
+    },
+    /** Moves real time on. */
+    advanceReal: (ms: number) => {
+      realMs += ms;
     },
   };
 }
@@ -56,6 +64,7 @@ const createBody = {
   amountPaise: 59900,
   returnUrl: 'http://localhost:3000/orders/ORD-1001?t=abc',
   expiresAt: new Date(T0 + 30 * 60_000).toISOString(),
+  minExpiresAt: new Date(R0 + 5 * 60_000).toISOString(),
 };
 
 async function create(sim: Sim, body: unknown = createBody, secret = SECRET) {
@@ -187,15 +196,26 @@ describe('PayMock (sim)', () => {
     expect(sim.sent[0]?.body.type).toBe('payment.captured');
   });
 
-  it('fails a payment chosen after the order deadline as expired', async () => {
+  it('fails a payment chosen after both deadlines as expired', async () => {
     const sim = (current = setup());
     const ref = await openPayment(sim);
     sim.advance(31 * 60_000);
+    sim.advanceReal(31 * 60_000);
     await click(sim, ref, 'success');
     expect(sim.sent[0]?.body).toMatchObject({
       type: 'payment.failed',
       data: { reason: 'expired' },
     });
+  });
+
+  it('still captures at demo speed until 5 real minutes have passed', async () => {
+    const sim = (current = setup({ speed: 144 }));
+    const ref = await openPayment(sim);
+    // A business day has passed, but only 4 real minutes.
+    sim.advance(24 * 60 * 60_000);
+    sim.advanceReal(4 * 60_000);
+    await click(sim, ref, 'success');
+    expect(sim.sent[0]?.body.type).toBe('payment.captured');
   });
 
   it('voids a capture the store refuses', async () => {

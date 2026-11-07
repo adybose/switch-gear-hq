@@ -3,7 +3,6 @@ import {
   settlementNet,
   UNPAID_CANCEL_AFTER_MS,
   UNPAID_CANCEL_MIN_REAL_MS,
-  unpaidDeadline,
   type PaymockCreatePayment,
   type PaymockPayment,
 } from '@switch-gear/shared/paymock';
@@ -276,8 +275,6 @@ export class PaymentUnavailable extends Error {
 }
 
 export interface OpenPaymentOptions {
-  /** Business clock speed now, to express the 5-real-minute floor in business time. */
-  speed: number;
   /** Sim base URL the store can reach (SIM_URL). */
   simUrl: string;
   /** Where PayMock sends the customer afterwards (the order page). */
@@ -296,7 +293,7 @@ export async function openPayment(
 ): Promise<PaymockPayment | null> {
   const order = await db.order.findUnique({
     where: { number: orderNumber },
-    select: { id: true, status: true, totalPaise: true, placedAt: true },
+    select: { id: true, status: true, totalPaise: true, placedAt: true, createdAt: true },
   });
   if (!order || order.status !== 'placed') return null;
 
@@ -305,7 +302,8 @@ export async function openPayment(
     orderNumber,
     amountPaise: order.totalPaise,
     returnUrl: options.returnUrl,
-    expiresAt: unpaidDeadline(order.placedAt, options.speed).toISOString(),
+    expiresAt: new Date(order.placedAt.getTime() + UNPAID_CANCEL_AFTER_MS).toISOString(),
+    minExpiresAt: new Date(order.createdAt.getTime() + UNPAID_CANCEL_MIN_REAL_MS).toISOString(),
   };
   const raw = JSON.stringify(body);
   const doFetch = options.fetch ?? globalThis.fetch;
