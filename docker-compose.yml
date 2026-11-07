@@ -1,4 +1,4 @@
-# Local stack: store :3000, sim :4000, gatekeeper :4100 (health only), Postgres :5432.
+# Local stack: store :3000, sim :4000, gatekeeper :4100 (health), Postgres :5432.
 # Values default to the test-only ones in .env.example; a local .env overrides them.
 x-common-env: &common-env
   DATABASE_URL: postgresql://${POSTGRES_USER:-switchgear}:${POSTGRES_PASSWORD:-switchgear-test-only}@db:5432/${POSTGRES_DB:-switchgear}
@@ -52,12 +52,21 @@ services:
     environment:
       <<: *common-env
       GATEKEEPER_PORT: '4100'
+      GATEKEEPER_STATE_FILE: /app/data/state.json
+      # Gatekeeper stays health-only until all four Switch values and the founder key are set.
+      SG_KEY_FOUNDER: ${SG_KEY_FOUNDER:-}
       SWITCH_URL: ${SWITCH_URL:-}
+      SWITCH_AGENT_ID: ${SWITCH_AGENT_ID:-}
       SWITCH_AGENT_TOKEN: ${SWITCH_AGENT_TOKEN:-}
+      SWITCH_FOUNDER_ID: ${SWITCH_FOUNDER_ID:-}
+      SWITCH_FOUNDER_NAME: ${SWITCH_FOUNDER_NAME:-}
     ports:
       - '4100:4100'
+    volumes:
+      - gatekeeper-state:/app/data
     depends_on:
       - store
 
 volumes:
   db-data:
+  gatekeeper-state:

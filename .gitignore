@@ -22,3 +22,6 @@ next-env.d.ts
 
 # Generated Prisma client (npm install runs prisma generate)
 apps/store/src/generated/
+
+# Gatekeeper's local state (event cursor, Switch connection id)
+.gatekeeper/

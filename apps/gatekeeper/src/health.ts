@@ -1,6 +1,6 @@
 import { createServer, type Server } from 'node:http';
 
-// Health endpoint only. Event polling and the Switch agent protocol arrive in T-24.
+// Health endpoint for docker compose; the work happens in gatekeeper.ts.
 export function createHealthServer(): Server {
   return createServer((req, res) => {
     if (req.method === 'GET' && req.url === '/health') {
