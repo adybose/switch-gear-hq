@@ -12,7 +12,8 @@
     "./shipping": "./src/shipping.ts",
     "./webhooks": "./src/webhooks.ts",
     "./paymock": "./src/paymock.ts",
-    "./printhub": "./src/printhub.ts"
+    "./printhub": "./src/printhub.ts",
+    "./shipfast": "./src/shipfast.ts"
   },
   "scripts": {
     "typecheck": "tsc --noEmit"

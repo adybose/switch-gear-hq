@@ -57,7 +57,7 @@ IDs shown to humans are short and prefixed: `ORD-1042`, `TCK-88`, `APR-7`, `INV-
 | Payment | orderId, gatewayRef, status, amountPaise, feePaise, feeGstPaise, failureReason, settlementRef, capturedAt, settledAt (a row per PayMock outcome) |
 | Refund | orderId, amountPaise, reason, status (requested, pending_approval, processed, rejected), approvalId |
 | PrintJob | orderId, partnerRef, status, attempt, costPaise, acceptedAt (business), dueAt, lateReportedAt |
-| Shipment | orderId, awb, status, zone, attempts, costPaise |
+| Shipment | orderId, awb, status, zone, attempts (delivery), sequence (booking), reshipOfId, approvalId, costPaise, bookedAt, estimatedDeliveryAt, deliveredAt |
 | CustomerInvoice | number, orderId, gstType (intra, inter), taxablePaise, cgstPaise, sgstPaise, igstPaise |
 | CreditNote | number, invoiceId, refundId, amounts as invoice |
 | PartnerInvoice | partner, partnerRef, periodStart, periodEnd, lines (json), totalPaise, gstPaise, status (received, verified, disputed, pending_approval, paid), approvalId |
@@ -141,6 +141,38 @@ commit, and tests for both. All money columns also have non-negative `CHECK` con
   Active jobs beyond acceptedAt + 2 days emit `printjob.late` once. Timers check every
   5 real seconds and callbacks also check their business occurrence time. The job
   remains handed_over and order printing until shipment creation (T-14).
+
+## ShipFast (courier)
+
+- Fulfilment books `/api/v1/shipments` only after the latest PrintHub job hands over.
+  The order becomes shipped on courier acceptance. `/shipments/{id}/reship` accepts
+  only the latest RTO/lost parcel; first reship runs immediately, second and later
+  use the Setting-backed gate and return 202. Repeated pending requests reuse an
+  approval; the decision executor revalidates the source in the order lock.
+- Shared schemas and prices: `packages/shared/src/shipfast.ts`; PIN rules remain in
+  `shipping.ts`. Courier `POST /shipfast/v1/shipments` requires HMAC and includes
+  orderRef, orderNumber, sequence, pickup, drop, weightGrams, optional reshipOfAwb.
+  Acceptance returns AWB, pickup_scheduled, attempts 0, zone, costPaise, bookedAt
+  and estimatedDeliveryAt. A tee weighs 250g for this simulator; pickup is a fixed
+  fictional Bengaluru PrintHub warehouse. Weight does not change zone pricing.
+- One business clock drives pickup (+1 hour), transit (+2 hours), out-for-delivery
+  (one hour before arrival) and delivery (1/3/5 days by zone). Loss probability is
+  0.5% per booking. Each delivery attempt fails with probability 10%; after two
+  next-day retries, a third failure returns to origin one day later.
+- Every change sends ordered signed `shipment.status` callbacks with AWB,
+  orderRef, orderNumber, sequence, status, attempts, costPaise and optional reason.
+  Network/5xx retries keep the same eventId and bytes; initial unknown_shipment
+  also retries so a lost booking response can be recovered. Partner state is in
+  memory; identical orderRef/sequence requests reuse acceptance.
+- Store callbacks emit `shipment.status` for every change, plus delivered/failed/
+  rto business events. Delivery updates order to delivered; failed attempts keep
+  it shipped; RTO sets returned and adds one outbound-rate surcharge. Lost parcels
+  remain shipped with shipment.failed(reason lost) until reship or refund.
+- `sequence` is the original booking (1), first reship (2), and so on, distinct
+  from the 0–3 delivery attempts on each AWB. Unique order/sequence and source
+  links prevent duplicate successors. Approved bookings link to ApprovalRequest.
+  Booking/delivery timestamps use business time; tracking shows the latest AWB
+  and courier progress. Ledger posting/invoicing remains T-16/T-19.
 
 ## Demo clock
 

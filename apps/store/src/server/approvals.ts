@@ -117,51 +117,54 @@ export async function decideApproval(
     now?: Date;
   },
 ): Promise<ApprovalRequest> {
-  return db.$transaction(async (tx) => {
-    const existing = await tx.approvalRequest.findUnique({ where: { number: input.number } });
-    if (!existing) throw new ApprovalError(404, 'not_found', `No approval ${input.number}.`);
-    const handler = executors.get(existing.action);
-    if (input.decision === 'approve' && !handler) {
-      throw new ApprovalError(
-        409,
-        'action_not_supported',
-        `The store can't run ${existing.action} yet, so it can't be approved.`,
-      );
-    }
+  return db.$transaction(
+    async (tx) => {
+      const existing = await tx.approvalRequest.findUnique({ where: { number: input.number } });
+      if (!existing) throw new ApprovalError(404, 'not_found', `No approval ${input.number}.`);
+      const handler = executors.get(existing.action);
+      if (input.decision === 'approve' && !handler) {
+        throw new ApprovalError(
+          409,
+          'action_not_supported',
+          `The store can't run ${existing.action} yet, so it can't be approved.`,
+        );
+      }
 
-    const status: ApprovalStatus = input.decision === 'approve' ? 'approved' : 'rejected';
-    const decidedAt = input.now ?? new Date();
-    const { count } = await tx.approvalRequest.updateMany({
-      where: { id: existing.id, status: 'pending' },
-      data: { status, decidedBy: input.decidedBy, decidedAt, decisionReason: input.reason },
-    });
-    if (count === 0) {
-      const current = await tx.approvalRequest.findUniqueOrThrow({ where: { id: existing.id } });
-      throw new ApprovalError(
-        409,
-        'already_decided',
-        `${input.number} is already ${current.status}.`,
-      );
-    }
-    const decided = await tx.approvalRequest.findUniqueOrThrow({ where: { id: existing.id } });
+      const status: ApprovalStatus = input.decision === 'approve' ? 'approved' : 'rejected';
+      const decidedAt = input.now ?? new Date();
+      const { count } = await tx.approvalRequest.updateMany({
+        where: { id: existing.id, status: 'pending' },
+        data: { status, decidedBy: input.decidedBy, decidedAt, decisionReason: input.reason },
+      });
+      if (count === 0) {
+        const current = await tx.approvalRequest.findUniqueOrThrow({ where: { id: existing.id } });
+        throw new ApprovalError(
+          409,
+          'already_decided',
+          `${input.number} is already ${current.status}.`,
+        );
+      }
+      const decided = await tx.approvalRequest.findUniqueOrThrow({ where: { id: existing.id } });
 
-    if (input.decision === 'approve') await handler!.execute(tx, decided.payload, decided);
-    else await handler?.reject?.(tx, decided.payload, decided);
+      if (input.decision === 'approve') await handler!.execute(tx, decided.payload, decided);
+      else await handler?.reject?.(tx, decided.payload, decided);
 
-    await recordEvent(tx, {
-      type: 'approval.decided',
-      entityType: 'approval',
-      entityId: decided.number,
-      payload: {
-        approvalId: decided.number,
-        action: decided.action,
-        decision: status,
-        decidedBy: input.decidedBy,
-        reason: input.reason,
-      },
-    });
-    return decided;
-  });
+      await recordEvent(tx, {
+        type: 'approval.decided',
+        entityType: 'approval',
+        entityId: decided.number,
+        payload: {
+          approvalId: decided.number,
+          action: decided.action,
+          decision: status,
+          decidedBy: input.decidedBy,
+          reason: input.reason,
+        },
+      });
+      return decided;
+    },
+    { timeout: 15000, maxWait: 10000 },
+  );
 }
 
 /** The Approval schema in api/openapi.yaml; `id` is the human number (APR-7). */

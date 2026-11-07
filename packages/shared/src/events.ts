@@ -3,6 +3,7 @@
 // The store writes them to the Event outbox; Gatekeeper reads them from GET /api/v1/events.
 // Payloads carry human-facing IDs (ORD-1042, APR-7) and money in paise, never personal data.
 
+import type { ShipmentStatus } from './shipfast';
 import type { PrintStatus } from './printhub';
 import type { GstType } from './money';
 
@@ -59,6 +60,14 @@ export interface EventPayloads {
     partnerRef: string;
     status: string;
     dueAt: IsoDate;
+  };
+  'shipment.status': {
+    orderNumber: string;
+    awb: string;
+    status: ShipmentStatus;
+    attempts: number;
+    sequence: number;
+    costPaise: number;
   };
   'shipment.delivered': {
     orderNumber: string;
@@ -164,6 +173,7 @@ export const EVENT_TYPES = [
   'printjob.status',
   'printjob.misprint',
   'printjob.late',
+  'shipment.status',
   'shipment.delivered',
   'shipment.failed',
   'shipment.rto',
