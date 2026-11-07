@@ -93,7 +93,7 @@ export function ContactForm({ orderNumber = '' }: { orderNumber?: string }) {
       <button
         type="submit"
         disabled={submitting}
-        className="rounded-md bg-neutral-900 px-4 py-2 font-medium text-white disabled:opacity-50"
+        className="cursor-pointer transition-colors enabled:hover:bg-neutral-700 rounded-md bg-neutral-900 px-4 py-2 font-medium text-white disabled:opacity-50"
       >
         {submitting ? 'Sending…' : 'Send'}
       </button>

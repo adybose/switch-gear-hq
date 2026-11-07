@@ -43,7 +43,7 @@ export function CartView() {
                 <button
                   type="button"
                   aria-label={`Remove one ${line.name}`}
-                  className="h-8 w-8 rounded border border-neutral-300"
+                  className="h-8 w-8 cursor-pointer rounded border border-neutral-300 transition-colors enabled:hover:bg-neutral-100"
                   onClick={() => updateCart((c) => setQty(c, line.sku, line.qty - 1))}
                 >
                   −
@@ -55,14 +55,14 @@ export function CartView() {
                   type="button"
                   aria-label={`Add one ${line.name}`}
                   disabled={line.qty >= MAX_QTY_PER_LINE}
-                  className="h-8 w-8 rounded border border-neutral-300 disabled:opacity-40"
+                  className="h-8 w-8 cursor-pointer rounded border border-neutral-300 transition-colors enabled:hover:bg-neutral-100 disabled:opacity-40"
                   onClick={() => updateCart((c) => setQty(c, line.sku, line.qty + 1))}
                 >
                   +
                 </button>
                 <button
                   type="button"
-                  className="ml-3 text-sm text-neutral-500 underline"
+                  className="ml-3 cursor-pointer text-sm text-neutral-500 underline transition-colors hover:text-neutral-900"
                   onClick={() => updateCart((c) => removeLine(c, line.sku))}
                 >
                   Remove
