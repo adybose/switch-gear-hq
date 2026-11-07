@@ -51,8 +51,13 @@ Needs Node.js 20+ and Docker.
 
 ```bash
 cp .env.example .env        # test values only
-docker compose up           # db, store (3000), sim (4000), gatekeeper (4100)
+docker compose up -d        # db, store (3000), sim (4000), gatekeeper (4100)
+# once the store is up, seed the catalogue, partners and department keys:
+docker compose exec store npm run db:seed -w @switch-gear/store
 ```
+
+Compose only migrates the database; it does not seed it. The seed writes the department
+API keys to `.env.local.keys` inside the store container.
 
 Or for development:
 
@@ -65,7 +70,9 @@ npm run dev                 # store + sim in watch mode
 
 - Store: <http://localhost:3000>. Founder login is in `.env.example`.
 - Sim controls (clock speed, order generator): <http://localhost:4000/sim/admin>.
-- `npm run demo:reset` wipes the data and restores the demo starting point.
+- `npm run demo:reset` wipes the data and restores the demo starting point. It runs on the
+  host in the dev setup; with Docker use
+  `docker compose exec store npm run demo:reset -w @switch-gear/store`.
 - Checks: `npm run lint`, `npm run typecheck`, `npm test`, `npm run test:e2e`.
 
 To bring up the agent org, run the Switch template after setting up the worktrees and
