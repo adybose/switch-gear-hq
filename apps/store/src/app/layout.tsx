@@ -31,7 +31,15 @@ export default function RootLayout({ children }: { children: ReactNode }) {
             <Link href="/" className="text-lg font-extrabold tracking-tight">
               SWITCH GEAR
             </Link>
-            <CartLink />
+            <div className="flex items-center gap-4 text-sm">
+              <Link href="/track" className="hover:underline">
+                Track order
+              </Link>
+              <Link href="/help" className="hover:underline">
+                Help
+              </Link>
+              <CartLink />
+            </div>
           </div>
           <nav aria-label="Collections" className="mx-auto max-w-5xl overflow-x-auto px-4 pb-3">
             <ul className="flex gap-4 text-sm whitespace-nowrap text-neutral-700">

@@ -23,7 +23,7 @@ How to use this file:
 | T-08 | Event outbox, events API, signed webhooks | builder | T-02, T-04 | MVP | done |
 | T-09 | API keys, scopes, validation | builder | T-02 | MVP | done |
 | T-10 | Approval gates | builder | T-08, T-09 | MVP | done |
-| T-11 | Order tracking and contact form | builder | T-06 | MVP | todo |
+| T-11 | Order tracking and contact form | builder | T-06 | MVP | done |
 | T-12 | Admin console | builder | T-09, T-10 | MVP | todo |
 | T-13 | PrintHub simulator and print jobs | builder | T-08, T-09 | MVP | todo |
 | T-14 | ShipFast simulator and shipments | builder | T-13 | MVP | todo |
