@@ -40,7 +40,7 @@ How to use this file:
 | T-25 | Role, room and business skill files; agent folders | builder | T-23 | MVP | done |
 | T-26 | Switch template and onboarding | founder | T-24, T-25 | MVP | todo |
 | T-27 | Scenario buttons | builder | T-15, T-19 | MVP (3 of 6) | todo |
-| T-28 | README and demo script | founder | T-26 | MVP | todo |
+| T-28 | README and demo script | founder | T-26 | MVP | done |
 
 Reviewer (`@reviewer`) reviews every builder PR with the `review-pr` skill.
 
