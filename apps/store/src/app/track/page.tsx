@@ -62,7 +62,7 @@ export default async function TrackPage({ searchParams }: Props) {
         </label>
         <button
           type="submit"
-          className="rounded-md bg-neutral-900 px-4 py-2 font-medium text-white"
+          className="cursor-pointer transition-colors enabled:hover:bg-neutral-700 rounded-md bg-neutral-900 px-4 py-2 font-medium text-white"
         >
           Track order
         </button>

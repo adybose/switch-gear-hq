@@ -23,7 +23,7 @@ function unique(values: string[], order: string[]): string[] {
 }
 
 const optionClass = (selected: boolean) =>
-  `rounded-md border px-3 py-2 text-sm ${
+  `cursor-pointer rounded-md border px-3 py-2 text-sm transition-colors ${
     selected
       ? 'border-neutral-900 bg-neutral-900 text-white'
       : 'border-neutral-300 hover:border-neutral-500'
@@ -128,7 +128,7 @@ export function VariantPicker({ product }: { product: ProductDetail }) {
                 aria-pressed={colour === c}
                 aria-label={colourStyle(c).label}
                 title={colourStyle(c).label}
-                className={`h-9 w-9 rounded-full border-2 ${colour === c ? 'border-neutral-900 ring-2 ring-neutral-900 ring-offset-2' : 'border-neutral-300'}`}
+                className={`h-9 w-9 cursor-pointer rounded-full border-2 transition-colors ${colour === c ? 'border-neutral-900 ring-2 ring-neutral-900 ring-offset-2' : 'border-neutral-300 hover:border-neutral-500'}`}
                 style={{ backgroundColor: colourStyle(c).hex }}
                 onClick={() => choose(() => setColour(c))}
               />
@@ -157,7 +157,7 @@ export function VariantPicker({ product }: { product: ProductDetail }) {
           type="button"
           disabled={!selected}
           onClick={addToCart}
-          className="w-full rounded-md bg-neutral-900 px-4 py-3 font-semibold text-white disabled:cursor-not-allowed disabled:bg-neutral-300"
+          className="cursor-pointer transition-colors enabled:hover:bg-neutral-700 w-full rounded-md bg-neutral-900 px-4 py-3 font-semibold text-white disabled:cursor-not-allowed disabled:bg-neutral-300"
         >
           {selected ? 'Add to cart' : 'Choose a size'}
         </button>

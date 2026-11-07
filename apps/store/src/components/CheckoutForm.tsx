@@ -237,7 +237,7 @@ export function CheckoutForm() {
               setErrors((e) => ({ ...e, discountCode: '' }));
               setCode(codeInput.trim());
             }}
-            className="rounded-md border border-neutral-900 px-3 py-2 text-sm font-medium"
+            className="cursor-pointer rounded-md border border-neutral-900 px-3 py-2 text-sm font-medium transition-colors enabled:hover:bg-neutral-100"
           >
             Apply
           </button>
@@ -291,7 +291,7 @@ export function CheckoutForm() {
         <button
           type="submit"
           disabled={submitting || !quote}
-          className="w-full rounded-md bg-neutral-900 px-4 py-3 font-semibold text-white disabled:bg-neutral-300"
+          className="cursor-pointer transition-colors enabled:hover:bg-neutral-700 w-full rounded-md bg-neutral-900 px-4 py-3 font-semibold text-white disabled:bg-neutral-300"
         >
           {submitting ? 'Placing order…' : 'Place order'}
         </button>
