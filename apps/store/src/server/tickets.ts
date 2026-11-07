@@ -1,27 +1,89 @@
-import type { PrismaClient } from '../generated/prisma/client';
+import type { Prisma, PrismaClient } from '../generated/prisma/client';
 import { recordEvent } from './events';
-import type { TicketInput, TicketListQuery } from './validation/tickets';
+import type { TicketInput, TicketListQuery, TicketReplyInput } from './validation/tickets';
+
+const ticketSelect = {
+  number: true,
+  order: { select: { number: true } },
+  type: true,
+  status: true,
+  messages: true,
+} satisfies Prisma.TicketSelect;
+
+type SelectedTicket = Prisma.TicketGetPayload<{ select: typeof ticketSelect }>;
+
+function ticketJson(ticket: SelectedTicket) {
+  return {
+    number: ticket.number,
+    orderNumber: ticket.order?.number ?? null,
+    type: ticket.type,
+    status: ticket.status,
+    messages: ticket.messages,
+  };
+}
 
 /** Support queue, newest first. Exposes public order numbers, never internal/customer IDs. */
 export async function listTickets(db: PrismaClient, status?: TicketListQuery['status']) {
   const tickets = await db.ticket.findMany({
     where: status ? { status } : {},
     orderBy: [{ createdAt: 'desc' }, { id: 'desc' }],
-    select: {
-      number: true,
-      order: { select: { number: true } },
-      type: true,
-      status: true,
-      messages: true,
-    },
+    select: ticketSelect,
   });
-  return tickets.map((ticket) => ({
-    number: ticket.number,
-    orderNumber: ticket.order?.number ?? null,
-    type: ticket.type,
-    status: ticket.status,
-    messages: ticket.messages,
-  }));
+  return tickets.map(ticketJson);
+}
+
+export async function getTicket(db: PrismaClient, number: string) {
+  const ticket = await db.ticket.findUnique({ where: { number }, select: ticketSelect });
+  return ticket ? ticketJson(ticket) : null;
+}
+
+/** Append, queue the simulated email and record the transition in one transaction. */
+export async function replyToTicket(
+  db: PrismaClient,
+  number: string,
+  input: TicketReplyInput,
+  now: Date,
+) {
+  return db.$transaction(async (tx) => {
+    // JSON read/modify/write must serialize per ticket to avoid lost concurrent replies.
+    const rows = await tx.$queryRaw<{ id: string }[]>`
+      SELECT id FROM "Ticket" WHERE number = ${number} FOR UPDATE`;
+    if (rows.length === 0) return null;
+    const ticket = await tx.ticket.findUniqueOrThrow({
+      where: { number },
+      include: { customer: { select: { email: true } } },
+    });
+    if (!Array.isArray(ticket.messages)) throw new Error('Invalid stored ticket messages');
+    const status = input.close ? 'closed' : 'waiting';
+    const updated = await tx.ticket.update({
+      where: { number },
+      data: {
+        status,
+        messages: [
+          ...(ticket.messages as Prisma.InputJsonValue[]),
+          { from: 'support', body: input.message, at: now.toISOString() },
+        ],
+      },
+      select: ticketSelect,
+    });
+    await tx.emailOutbox.create({
+      data: {
+        ticketId: ticket.id,
+        to: ticket.customer.email,
+        subject: `Re: ${number}`,
+        body: input.message,
+        createdAt: now,
+      },
+    });
+    await recordEvent(tx, {
+      type: 'ticket.replied',
+      entityType: 'ticket',
+      entityId: number,
+      payload: { ticketNumber: number, status },
+      at: now,
+    });
+    return ticketJson(updated);
+  });
 }
 
 /**

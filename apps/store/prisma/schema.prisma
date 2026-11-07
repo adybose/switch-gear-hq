@@ -467,7 +467,22 @@ model Ticket {
   createdAt  DateTime     @default(now())
   updatedAt  DateTime     @updatedAt
 
+  emails EmailOutbox[]
+
   @@index([status])
+}
+
+/// Simulated outgoing email only; no external mail is sent.
+model EmailOutbox {
+  id        String   @id @default(cuid())
+  ticketId  String
+  ticket    Ticket   @relation(fields: [ticketId], references: [id])
+  to        String
+  subject   String
+  body      String
+  createdAt DateTime @default(now())
+
+  @@index([ticketId])
 }
 
 // ---------- platform ----------

@@ -1,6 +1,6 @@
 import { z } from 'zod';
 
-// Mirrors GET /orders/track and POST/GET /tickets in api/openapi.yaml.
+// Mirrors ticket and tracking endpoints in api/openapi.yaml.
 
 export const ticketListQuery = z.object({
   status: z.enum(['open', 'waiting', 'closed']).optional(),
@@ -26,3 +26,10 @@ export const ticketInput = z.object({
 export type TrackQuery = z.infer<typeof trackQuery>;
 export type TicketInput = z.infer<typeof ticketInput>;
 export type TicketListQuery = z.infer<typeof ticketListQuery>;
+
+export const ticketReplyInput = z.object({
+  message: z.string().trim().min(1).max(2000),
+  close: z.boolean().default(false),
+});
+
+export type TicketReplyInput = z.infer<typeof ticketReplyInput>;
