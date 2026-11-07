@@ -7,6 +7,7 @@ import type { Department } from '../generated/prisma/client';
  */
 export const READ_SCOPES = [
   'orders',
+  'order_summary',
   'print_jobs',
   'shipments',
   'payments',
@@ -52,6 +53,7 @@ const reads = (...names: (typeof READ_SCOPES)[number][]): Scope[] =>
 const writes = (...names: (typeof WRITE_SCOPES)[number][]): Scope[] =>
   names.map((n) => `${n}:write` as const);
 
+/** `orders:read` is the full record; `order_summary:read` is totals only (marketing). */
 const ALL_READS = reads(...READ_SCOPES);
 
 const SCOPES: Record<Department, ReadonlySet<Scope>> = {
@@ -64,7 +66,7 @@ const SCOPES: Record<Department, ReadonlySet<Scope>> = {
     ...writes('refunds', 'partner_payouts', 'ledger_adjustments'),
   ]),
   marketing: new Set([
-    ...reads('catalogue', 'orders', 'campaigns', 'discount_codes'),
+    ...reads('catalogue', 'order_summary', 'campaigns', 'discount_codes'),
     ...writes('discount_codes', 'campaigns', 'ad_budget'),
   ]),
   support: new Set([

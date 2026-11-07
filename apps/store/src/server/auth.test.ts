@@ -34,6 +34,7 @@ describe('authorize()', () => {
     ['fulfilment', 'refunds:write'],
     ['finance', 'print_jobs:write'],
     ['marketing', 'ledger:read'],
+    ['marketing', 'orders:read'],
     ['support', 'refunds:write'],
     ['engineering', 'orders:read'],
     ['hq', 'refunds:write'],

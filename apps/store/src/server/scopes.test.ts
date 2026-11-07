@@ -49,13 +49,14 @@ describe('department scopes (docs/architecture.md)', () => {
     marketing: {
       yes: [
         'catalogue:read',
-        'orders:read',
+        'order_summary:read',
         'campaigns:read',
         'discount_codes:write',
         'campaigns:write',
         'ad_budget:write',
       ],
       no: [
+        'orders:read',
         'refunds:write',
         'ledger:read',
         'print_jobs:write',
