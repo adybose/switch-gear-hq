@@ -80,6 +80,20 @@ describe.skipIf(!process.env.DATABASE_URL)('event outbox and events API (databas
     expect((await get('?after=-1')).status).toBe(422);
   });
 
+  it('bounds the cursor to the seq column range', async () => {
+    const top = await get('?after=2147483647');
+    expect(top.status).toBe(200);
+    expect(await top.json()).toEqual([]);
+    for (const after of ['2147483648', String(Number.MAX_SAFE_INTEGER), '1e400', '1.5', 'abc']) {
+      const res = await get(`?after=${after}`);
+      expect(res.status, after).toBe(422);
+      expect(await res.json()).toMatchObject({
+        error: 'validation_failed',
+        details: { after: expect.any(String) },
+      });
+    }
+  });
+
   it('refuses missing, unknown and revoked keys', async () => {
     expect((await get('', null)).status).toBe(401);
     expect((await get('', 'sg_founder_notarealkey')).status).toBe(401);

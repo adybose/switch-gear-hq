@@ -327,7 +327,7 @@ paths:
     get:
       tags: [platform]
       parameters:
-        - { name: after, in: query, schema: { type: integer, default: 0 } }
+        - { name: after, in: query, schema: { type: integer, default: 0, minimum: 0, maximum: 2147483647 } }
         - { name: limit, in: query, schema: { type: integer, default: 100, maximum: 500 } }
       description: >
         Outbox events with seq greater than `after`, oldest first. Page by passing the last

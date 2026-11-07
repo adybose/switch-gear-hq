@@ -5,8 +5,11 @@ import { EVENTS_DEFAULT_LIMIT, EVENTS_MAX_LIMIT, listEvents } from '../../../../
 import { errorResponse } from '../../../../server/http';
 import { fieldErrors } from '../../../../server/validation/checkout';
 
+/** Event.seq is a Postgres INTEGER; a cursor past it can't match anything and Prisma rejects it. */
+const MAX_SEQ = 2_147_483_647;
+
 const query = z.object({
-  after: z.coerce.number().int().min(0).default(0),
+  after: z.coerce.number().int().min(0).max(MAX_SEQ).default(0),
   limit: z.coerce.number().int().min(1).max(EVENTS_MAX_LIMIT).default(EVENTS_DEFAULT_LIMIT),
 });
 
