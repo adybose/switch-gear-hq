@@ -9,7 +9,8 @@
     "./events": "./src/events.ts",
     "./clock": "./src/clock.ts",
     "./pricing": "./src/pricing.ts",
-    "./shipping": "./src/shipping.ts"
+    "./shipping": "./src/shipping.ts",
+    "./webhooks": "./src/webhooks.ts"
   },
   "scripts": {
     "typecheck": "tsc --noEmit"

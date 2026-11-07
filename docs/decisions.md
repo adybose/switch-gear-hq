@@ -40,3 +40,7 @@ Short, dated log. Newest first. Append; don't rewrite history.
 | 2026-11-07 | Orders store their own delivery details; the Customer row only links orders by email and checkout never updates it | Public checkout can't change another order's address; repeat-refund rule (spec §8) still sees one customer |
 | 2026-11-07 | Order confirmation links carry an HMAC token (`ORDER_LINK_SECRET`); until PayMock (T-07) `paymentUrl` is that page | Order numbers are guessable; the token isn't |
 | 2026-11-07 | Added `POST /checkout/quote` (in openapi.yaml) | Checkout page shows totals, code and PIN problems before the order is placed |
+| 2026-11-07 | Event writers take a transaction-scoped advisory lock, so outbox `seq` order equals commit order | A poller paging by `after=<seq>` can never skip an event that commits late; throughput is fine for the demo |
+| 2026-11-07 | Webhook dedupe via a `WebhookReceipt` table (unique partner + eventId), written in the handler's transaction | Exactly-once effects; a failed handler leaves no receipt, so the partner's retry works |
+| 2026-11-07 | `GET /events` accepts any valid API key until T-09 adds scopes | Not public in the meantime |
+| 2026-11-07 | Webhook secrets fall back to the `.env.example` test values when unset | A fresh clone works; unsigned or wrongly signed calls are still rejected |

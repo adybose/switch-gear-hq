@@ -78,6 +78,8 @@ commit, and tests for both. All money columns also have non-negative `CHECK` con
 ## Events (outbox)
 
 - Every state change writes an `Event` row in the same database transaction (outbox pattern).
+  `recordEvent()` in `apps/store/src/server/events.ts` is the only writer; it takes a
+  transaction-scoped advisory lock so `seq` order equals commit order and pollers never skip one.
 - `GET /api/v1/events?after=<seq>&limit=100` returns events in order. Gatekeeper polls every 2 s
   and stores its cursor.
 - Event names and payloads live in `packages/shared/events.ts`; the list is in `docs/spec.md` §10.
@@ -96,7 +98,9 @@ commit, and tests for both. All money columns also have non-negative `CHECK` con
 
 - `POST /api/v1/webhooks/{paymock|printhub|shipfast}`
 - Header `X-SG-Signature: sha256=<hex HMAC of raw body>` using a per-partner secret.
-- Idempotent: each webhook has an `eventId`; duplicates are ignored.
+- Body: `{ eventId, type, occurredAt, data }`. Signing helpers live in `packages/shared/src/webhooks.ts`.
+- Idempotent: each webhook has an `eventId`; duplicates are ignored. A `WebhookReceipt` row is
+  written in the same transaction as the handler's effects, so a failed handler can be retried.
 
 ## Demo clock
 
