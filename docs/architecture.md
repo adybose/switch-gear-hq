@@ -87,7 +87,7 @@ commit, and tests for both. All money columns also have non-negative `CHECK` con
 
 ## Approval gates
 
-- Limits live in `Setting` rows (seeded from `docs/spec.md` §8).
+- Limits live in `Setting` rows (seeded from `docs/spec.md` §8). Gate checks are in `apps/store/src/server/gates.ts`; requests and decisions in `approvals.ts`.
 - An over-limit request returns `202 {"approvalId":"APR-7","status":"pending"}` and writes
   `approval.requested`.
 - `POST /api/v1/approvals/{id}/decision` (founder key only) with `approve` or `reject` + reason.
