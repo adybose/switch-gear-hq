@@ -56,6 +56,7 @@ interface Payment {
   minExpiresAt: Date;
   status: PaymockPaymentStatus;
   capturedAt?: Date;
+  pendingDueAt?: number;
   fee?: GatewayFee;
   settlementRef?: string;
 }
@@ -68,6 +69,7 @@ export interface Paymock {
   get(gatewayRef: string): Readonly<Payment> | undefined;
   choose(gatewayRef: string, outcome: Outcome): Promise<Readonly<Payment> | undefined>;
   resolvePending(gatewayRef: string): Promise<void>;
+  resolveDuePending(): Promise<void>;
   settleDue(): Promise<string | null>;
 }
 
@@ -187,6 +189,26 @@ export function registerPaymock(app: FastifyInstance, options: PaymockOptions): 
     if (payment?.status === 'pending') await capture(payment);
   }
 
+  async function resolveDuePending(): Promise<void> {
+    for (const p of payments.values()) {
+      if (p.status === 'pending' && p.pendingDueAt! <= clock.now().getTime()) {
+        await resolvePending(p.gatewayRef);
+      }
+    }
+  }
+
+  function schedulePending(payment: Payment): void {
+    const remaining = payment.pendingDueAt! - clock.now().getTime();
+    schedule(
+      () => {
+        if (payment.status !== 'pending') return;
+        if (clock.now().getTime() >= payment.pendingDueAt!) void resolvePending(payment.gatewayRef);
+        else schedulePending(payment);
+      },
+      realDelayMs(clock, remaining),
+    );
+  }
+
   async function choose(gatewayRef: string, outcome: Outcome) {
     const payment = payments.get(gatewayRef);
     if (!payment || payment.status !== 'created') return payment;
@@ -197,7 +219,8 @@ export function registerPaymock(app: FastifyInstance, options: PaymockOptions): 
       // Pending resolves to success some time within 5 business minutes.
       payment.status = 'pending';
       const businessMs = Math.round((0.1 + 0.9 * random()) * PENDING_RESOLVE_WITHIN_MS);
-      schedule(() => void resolvePending(gatewayRef), realDelayMs(clock, businessMs));
+      payment.pendingDueAt = clock.now().getTime() + businessMs;
+      schedulePending(payment);
     }
     return payment;
   }
@@ -222,6 +245,15 @@ export function registerPaymock(app: FastifyInstance, options: PaymockOptions): 
     });
     return settlementRef;
   }
+
+  const unsubscribe = clock.onSpeedChange?.(() => {
+    for (const payment of payments.values()) {
+      if (payment.status === 'pending') schedulePending(payment);
+    }
+  });
+  app.addHook('onClose', async () => {
+    unsubscribe?.();
+  });
 
   app.register(async (scope) => {
     // The create call is signed over the exact bytes, so keep the raw body.
@@ -301,7 +333,7 @@ export function registerPaymock(app: FastifyInstance, options: PaymockOptions): 
     app.addHook('onClose', async () => clearInterval(timer));
   }
 
-  return { get: (ref) => payments.get(ref), choose, resolvePending, settleDue };
+  return { get: (ref) => payments.get(ref), choose, resolvePending, resolveDuePending, settleDue };
 }
 
 function page(title: string, body: string): string {

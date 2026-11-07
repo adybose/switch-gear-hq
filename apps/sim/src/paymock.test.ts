@@ -14,7 +14,8 @@ function setup({
 }: { storeStatus?: number | number[]; speed?: number } = {}) {
   let nowMs = T0;
   let realMs = R0;
-  const clock: SimClock = { now: () => new Date(nowMs), speed: () => speed };
+  let currentSpeed = speed;
+  const clock: SimClock = { now: () => new Date(nowMs), speed: () => currentSpeed };
   const sent: { body: Record<string, unknown>; signed: boolean }[] = [];
   const statuses = Array.isArray(storeStatus) ? [...storeStatus] : null;
   const fetch = (async (url: URL, init: RequestInit) => {
@@ -40,6 +41,9 @@ function setup({
     ...sim,
     sent,
     scheduled,
+    setSpeed: (value: number) => {
+      currentSpeed = value;
+    },
     /** Moves business time on. */
     advance: (ms: number) => {
       nowMs += ms;
@@ -194,6 +198,28 @@ describe('PayMock (sim)', () => {
     await new Promise((r) => setTimeout(r, 0));
     expect(sim.paymock.get(ref)?.status).toBe('captured');
     expect(sim.sent[0]?.body.type).toBe('payment.captured');
+  });
+
+  it('pending follows business time when speed changes in either direction', async () => {
+    const sim = (current = setup({ speed: 1 }));
+    const ref = await openPayment(sim);
+    await click(sim, ref, 'pending');
+    sim.setSpeed(144);
+    sim.advance(PENDING_RESOLVE_WITHIN_MS);
+    await sim.paymock.resolveDuePending();
+    expect(sim.paymock.get(ref)?.status).toBe('captured');
+  });
+
+  it('a pending callback scheduled at demo speed cannot capture early after slowing down', async () => {
+    const sim = (current = setup({ speed: 144 }));
+    const ref = await openPayment(sim);
+    await click(sim, ref, 'pending');
+    sim.setSpeed(1);
+    sim.advance(2100);
+    sim.scheduled[0]!.fn();
+    await new Promise((r) => setTimeout(r, 0));
+    expect(sim.paymock.get(ref)?.status).toBe('pending');
+    expect(sim.scheduled[1]!.ms).toBe(297900);
   });
 
   it('fails a payment chosen after both deadlines as expired', async () => {

@@ -1,3 +1,5 @@
+import { createGenerator, type OrderGenerator } from './generator';
+import { registerControls } from './controls';
 import { DEFAULT_PORTS } from '@switch-gear/shared';
 import { webhookSecret } from '@switch-gear/shared/webhooks';
 import Fastify, { type FastifyInstance } from 'fastify';
@@ -11,20 +13,21 @@ export interface SimApp {
   paymock: Paymock;
   printhub: Printhub;
   shipfast: Shipfast;
+  generator: OrderGenerator;
 }
 
-// Partners share one business clock. T-15 adds speed controls and the generator.
+// Partners and generated orders share one controllable business clock.
 export function buildSim(
   overrides: Partial<PaymockOptions> = {},
   printOverrides: Partial<PrinthubOptions> = {},
   shipOverrides: Partial<ShipfastOptions> = {},
+  generatorOptions: { seed?: number; tickEveryMs?: number } = {},
 ): SimApp {
   const app = Fastify({ logger: process.env.NODE_ENV !== 'test' });
 
   app.get('/health', async () => ({ status: 'ok', service: 'sim' }));
 
   const clock = overrides.clock ?? createSimClock();
-  app.get('/sim/clock', async () => ({ now: clock.now().toISOString(), speed: clock.speed() }));
   const paymock = registerPaymock(app, {
     clock,
     storeUrl: process.env.STORE_URL || `http://localhost:${DEFAULT_PORTS.store}`,
@@ -51,7 +54,30 @@ export function buildSim(
     tickEveryMs: 1000,
     ...shipOverrides,
   });
-  return { app, paymock, printhub, shipfast };
+  const generator = createGenerator({
+    clock,
+    paymock,
+    storeUrl:
+      overrides.storeUrl ?? process.env.STORE_URL ?? `http://localhost:${DEFAULT_PORTS.store}`,
+    fetch: overrides.fetch,
+    seed: generatorOptions.seed ?? Number(process.env.SIM_GENERATOR_SEED ?? 42),
+  });
+  if (process.env.SIM_GENERATOR_ENABLED === 'true') generator.configure({ enabled: true });
+  registerControls(app, clock, generator);
+  const tickEveryMs = generatorOptions.tickEveryMs ?? 1000;
+  const timer = tickEveryMs
+    ? setInterval(() => {
+        void generator.tick();
+        void paymock
+          .resolveDuePending()
+          .catch((error) => app.log.error(error, 'pending payment tick failed'));
+      }, tickEveryMs)
+    : undefined;
+  timer?.unref();
+  app.addHook('onClose', async () => {
+    if (timer) clearInterval(timer);
+  });
+  return { app, paymock, printhub, shipfast, generator };
 }
 
 export function buildApp(overrides: Partial<PaymockOptions> = {}): FastifyInstance {

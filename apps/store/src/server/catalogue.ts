@@ -132,3 +132,23 @@ export async function getArtworkSubject(
     style: product.collection === 'basics' ? 'small-logo' : 'statement',
   };
 }
+
+/** Public API catalogue: published products with current active SKUs, stable order. */
+export function apiProducts(db: PrismaClient, filter: { collection?: string; slug?: string } = {}) {
+  return db.product.findMany({
+    where: { ...filter, status: 'published', variants: { some: { active: true } } },
+    orderBy: { slug: 'asc' },
+    select: {
+      slug: true,
+      name: true,
+      collection: true,
+      description: true,
+      artworkUrl: true,
+      variants: {
+        where: { active: true },
+        orderBy: { sku: 'asc' },
+        select: { sku: true, fit: true, colour: true, size: true, pricePaise: true },
+      },
+    },
+  });
+}

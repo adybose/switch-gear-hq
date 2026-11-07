@@ -1,17 +1,41 @@
-// The sim's business clock. For now it runs at a fixed speed from SIM_CLOCK_SPEED (default 1,
-// real time). T-15 adds GET /sim/clock, the demo speed control and shares it with the store.
+// Shared business clock. Speed changes preserve the current business instant.
 
 export interface SimClock {
   now(): Date;
   /** Business seconds per real second. */
   speed(): number;
+  onSpeedChange?(listener: () => void): () => void;
 }
 
-export function createSimClock(speed = Number(process.env.SIM_CLOCK_SPEED) || 1): SimClock {
-  const startReal = Date.now();
+export interface MutableSimClock extends SimClock {
+  setSpeed(speed: number): void;
+}
+
+export function createSimClock(speed = Number(process.env.SIM_CLOCK_SPEED) || 1): MutableSimClock {
+  const listeners = new Set<() => void>();
+  let baseReal = Date.now();
+  let baseBusiness = baseReal;
+  const validate = (value: number) => {
+    if (!Number.isFinite(value) || value <= 0) throw new Error('Clock speed must be positive');
+  };
+  validate(speed);
+  const now = () => new Date(baseBusiness + (Date.now() - baseReal) * speed);
   return {
-    now: () => new Date(startReal + (Date.now() - startReal) * speed),
+    onSpeedChange: (listener) => {
+      listeners.add(listener);
+      return () => {
+        listeners.delete(listener);
+      };
+    },
+    now,
     speed: () => speed,
+    setSpeed: (next) => {
+      validate(next);
+      baseBusiness = now().getTime();
+      baseReal = Date.now();
+      speed = next;
+      for (const listener of listeners) listener();
+    },
   };
 }
 

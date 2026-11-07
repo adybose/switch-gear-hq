@@ -1,0 +1,91 @@
+openapi: 3.1.0
+info:
+  title: Switch Gear simulator controls
+  version: 0.1.0
+  description: >-
+    In-memory demo controls. All partners and generated orders share one clock.
+    Founder HTTP Basic credentials come from FOUNDER_EMAIL/FOUNDER_PASSWORD in the test environment.
+    Cross-origin browser requests are refused. This is separate from the store department-key API.
+servers:
+  - url: http://localhost:4000
+security:
+  - founderBasic: []
+paths:
+  /sim/admin:
+    get:
+      summary: Browser control page (clock speed, generator start/stop and seed)
+      responses:
+        '200': { description: HTML controls }
+        '401': { description: Missing or incorrect founder credentials }
+  /sim/clock:
+    get:
+      security: []
+      summary: Public business clock for store/partner timers
+      responses:
+        '200': { description: Clock, content: { application/json: { schema: { $ref: '#/components/schemas/Clock' } } } }
+    put:
+      summary: Change speed continuously without changing the current business instant
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { type: object, additionalProperties: false, required: [speed], properties: { speed: { type: integer, enum: [1, 144] } } }
+      responses:
+        '200': { description: Updated clock, content: { application/json: { schema: { $ref: '#/components/schemas/Clock' } } } }
+        '401': { description: Missing or incorrect founder credentials }
+        '403': { description: Cross-origin request }
+        '409': { description: Injected clock is read-only }
+        '422': { description: Invalid body }
+  /sim/generator:
+    get:
+      responses:
+        '200': { description: Generator state, content: { application/json: { schema: { $ref: '#/components/schemas/Generator' } } } }
+        '401': { description: Missing or incorrect founder credentials }
+    put:
+      description: >-
+        Default off. Start schedules the first order 48 business minutes later (30/day).
+        Stop drops backlog; an in-flight checkout finishes payment. Set seed only while stopped
+        and idle (otherwise 409 with no state change). Seed resets counters and PRNG. Same seed
+        and same catalogue replay carts/customers and shuffled 100-outcome batches (95/4/1).
+        Failures are reported, not automatically retried; checkout has no idempotency key.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              additionalProperties: false
+              minProperties: 1
+              properties:
+                enabled: { type: boolean }
+                seed: { type: integer, minimum: 0, maximum: 4294967295 }
+      responses:
+        '200': { description: Updated state, content: { application/json: { schema: { $ref: '#/components/schemas/Generator' } } } }
+        '401': { description: Missing or incorrect founder credentials }
+        '403': { description: Cross-origin request }
+        '409': { description: Stop and wait for idle before reseeding }
+        '422': { description: Invalid body }
+components:
+  securitySchemes:
+    founderBasic: { type: http, scheme: basic }
+  schemas:
+    Clock:
+      type: object
+      required: [now, speed]
+      properties:
+        now: { type: string, format: date-time }
+        speed: { type: number, exclusiveMinimum: 0 }
+    Generator:
+      type: object
+      required: [enabled, seed, ordersPerDay, busy, attempted, completed, failed, lastError, lastOrder, nextAt]
+      properties:
+        enabled: { type: boolean }
+        seed: { type: integer }
+        ordersPerDay: { type: integer, const: 30 }
+        busy: { type: boolean }
+        attempted: { type: integer }
+        completed: { type: integer, description: PayMock accepted the chosen outcome; webhook retries may still be in flight }
+        failed: { type: integer }
+        lastError: { type: [string, 'null'] }
+        lastOrder: { type: [string, 'null'] }
+        nextAt: { type: [string, 'null'], format: date-time }

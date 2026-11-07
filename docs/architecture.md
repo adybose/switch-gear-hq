@@ -179,6 +179,27 @@ commit, and tests for both. All money columns also have non-negative `CHECK` con
 - The sim owns business time. `GET /sim/clock` returns `now` and `speed`.
 - Speed 1 = real time; demo speed: 1 business day = 10 minutes.
 - Store timers (unpaid cancel, late print job) read the sim clock through `packages/shared/clock.ts`.
+- Founder controls: sim `/sim/admin`, HTTP Basic with test `FOUNDER_EMAIL`/`FOUNDER_PASSWORD`.
+  JSON controls: `PUT /sim/clock {speed: 1|144}` and `GET/PUT /sim/generator` (see
+  `api/sim.openapi.yaml`). Changes preserve the current business instant; existing cached
+  store clock readers refresh within 5 real seconds. Pending payments reschedule on speed changes.
+- Generator defaults off (`SIM_GENERATOR_ENABLED=false`); seed defaults to 42
+  (`SIM_GENERATOR_SEED`). Start schedules one order every 48 business minutes, about 30/day.
+  It selects published/active SKUs through public catalogue reads, calls `POST /checkout`
+  with source `generator`, opens the returned payment link, then chooses PayMock's outcome.
+  All store changes use existing services/outbox and signed webhooks; sim never reads Postgres.
+- A seeded PRNG produces carts, fake `@example.com` customers in eight fixed Indian cities,
+  and shuffled batches of 100 outcomes: 95 success, 4 failure, 1 pending. Reproducibility
+  covers generated inputs/outcomes for the same seed/catalogue; IDs, clock dates and partner
+  failure randomness are independent. Pending resolves normally to success.
+- Stop drops missed intervals, allowing an in-flight order to finish. Reseed only when
+  stopped and idle; counters reset too. One tick/order at a time; missed intervals do not
+  cause bursts. An HTTP failure is visible in generator status, not retried automatically
+  because checkout has no idempotency key. Inspect `lastOrder` for payment-opening errors.
+- Clock, generator and partner state are in memory; restart sim for a complete new demo.
+  Store demo reset alone does not clear live simulator memory. `Setting clock.speed` and
+  `FeatureFlag sim.orderGenerator` are legacy seed placeholders; runtime controls live in sim.
+
 
 ## Environment
 

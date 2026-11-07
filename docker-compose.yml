@@ -42,6 +42,11 @@ services:
     environment:
       <<: *common-env
       SIM_PORT: '4000'
+      SIM_CLOCK_SPEED: ${SIM_CLOCK_SPEED:-1}
+      SIM_GENERATOR_ENABLED: ${SIM_GENERATOR_ENABLED:-false}
+      SIM_GENERATOR_SEED: ${SIM_GENERATOR_SEED:-42}
+      FOUNDER_EMAIL: ${FOUNDER_EMAIL:-founder@example.com}
+      FOUNDER_PASSWORD: ${FOUNDER_PASSWORD:-test-only-founder-password}
     ports:
       - '4000:4000'
     depends_on:

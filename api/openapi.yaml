@@ -6,6 +6,7 @@ info:
     REST API for the Switch Gear store. Agents call it through the `sg` CLI.
     All money is integer paise. All times are ISO 8601 UTC.
     Over-limit actions return 202 with an approval ID instead of executing.
+    Simulator clock/generator controls are specified separately in api/sim.openapi.yaml.
 servers:
   - url: http://localhost:3000/api/v1
 security:
