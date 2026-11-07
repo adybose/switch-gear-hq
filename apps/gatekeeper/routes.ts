@@ -44,6 +44,7 @@ export const ROUTES: Record<EventType, Route | null> = {
   'printjob.status': { room: 'fulfilment', mention: 'fulfilment', also: [] },
   'printjob.misprint': { room: 'fulfilment', mention: 'fulfilment', also: ['finance'] },
   'printjob.late': { room: 'fulfilment', mention: 'fulfilment', also: ['support'] },
+  'shipment.status': { room: 'fulfilment', mention: 'fulfilment', also: [] },
   'shipment.delivered': { room: 'support', mention: 'support', also: ['finance'] },
   'shipment.failed': { room: 'fulfilment', mention: 'fulfilment', also: ['support', 'finance'] },
   'shipment.rto': { room: 'fulfilment', mention: 'fulfilment', also: ['support', 'finance'] },

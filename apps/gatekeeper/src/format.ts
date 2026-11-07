@@ -63,6 +63,13 @@ function details(event: StoreEvent): string[] {
         event.payload.status,
         `due ${event.payload.dueAt}`,
       ];
+    case 'shipment.status':
+      return [
+        event.payload.orderNumber,
+        `AWB ${event.payload.awb}`,
+        event.payload.status,
+        `attempt ${event.payload.attempts}`,
+      ];
     case 'shipment.delivered':
       return [event.payload.orderNumber, `AWB ${event.payload.awb}`];
     case 'shipment.failed':
