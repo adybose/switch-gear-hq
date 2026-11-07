@@ -83,13 +83,12 @@ export function CartView() {
           Prices include GST. Any 3 tees get 10% off, and shipping is free on orders of ₹999 or more
           (otherwise ₹79). Both are applied at checkout.
         </p>
-        <button
-          type="button"
-          disabled
-          className="w-full rounded-md bg-neutral-300 px-4 py-3 font-semibold text-white"
+        <Link
+          href="/checkout"
+          className="block w-full rounded-md bg-neutral-900 px-4 py-3 text-center font-semibold text-white"
         >
-          Checkout opens soon
-        </button>
+          Checkout
+        </Link>
       </div>
     </div>
   );

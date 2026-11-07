@@ -7,7 +7,9 @@
     ".": "./src/index.ts",
     "./money": "./src/money.ts",
     "./events": "./src/events.ts",
-    "./clock": "./src/clock.ts"
+    "./clock": "./src/clock.ts",
+    "./pricing": "./src/pricing.ts",
+    "./shipping": "./src/shipping.ts"
   },
   "scripts": {
     "typecheck": "tsc --noEmit"

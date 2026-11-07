@@ -4,6 +4,7 @@ x-common-env: &common-env
   DATABASE_URL: postgresql://${POSTGRES_USER:-switchgear}:${POSTGRES_PASSWORD:-switchgear-test-only}@db:5432/${POSTGRES_DB:-switchgear}
   STORE_URL: http://store:3000
   SIM_URL: http://sim:4000
+  ORDER_LINK_SECRET: ${ORDER_LINK_SECRET:-test-only-order-link-secret}
 
 services:
   db:

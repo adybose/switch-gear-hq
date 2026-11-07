@@ -40,8 +40,8 @@ Switch (Slack), run the rest.
 | Oversized (220 GSM) | ₹799 | ₹761 | ₹340 | ₹421 |
 | Premium (240 GSM) | ₹999 | ₹951 | ₹420 | ₹531 |
 
-- Shipping: free at ₹999 or more, else ₹79.
-- Any 3 tees: 10% off automatically.
+- Shipping: free at ₹999 or more (goods after discounts), else ₹79.
+- Any 3 tees: 10% off automatically. It doesn't stack with a discount code; the bigger discount applies.
 - Discount codes: up to 20% off for up to 7 days without approval.
 - Prepaid only (cash on delivery is a stretch goal).
 
@@ -112,7 +112,7 @@ PrintHub payable, ShipFast payable.
 
 Tax assumptions (simulation, not tax advice): tees up to ₹2,500 a piece at 5% GST, above at 18%
 (₹2,500 is the pre-GST value per piece after discounts, i.e. up to ₹2,625 including 5% GST);
-the shipping fee is taxed at the tee's rate; partner invoices carry 18% GST, claimed as input credit.
+the shipping fee is taxed at the tee's rate (the highest rate in the cart if rates differ); partner invoices carry 18% GST, claimed as input credit.
 
 ## 7. Departments
 
