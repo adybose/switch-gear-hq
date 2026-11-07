@@ -40,7 +40,7 @@ export interface EventPayloads {
   'order.cancelled': {
     orderNumber: string;
     totalPaise: number;
-    reason: 'unpaid_timeout';
+    reason: 'unpaid_timeout' | 'requested';
   };
   'printjob.status': {
     orderNumber: string;
