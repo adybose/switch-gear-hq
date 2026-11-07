@@ -124,8 +124,9 @@ paths:
         - { name: number, in: query, required: true, schema: { type: string } }
         - { name: email, in: query, required: true, schema: { type: string, format: email } }
       responses:
-        '200': { description: Order status timeline, content: { application/json: { schema: { $ref: '#/components/schemas/Order' } } } }
+        '200': { description: Order status timeline, content: { application/json: { schema: { $ref: '#/components/schemas/TrackedOrder' } } } }
         '404': { $ref: '#/components/responses/NotFound' }
+        '422': { $ref: '#/components/responses/Invalid' }
   /tickets:
     post:
       tags: [public]
@@ -136,7 +137,9 @@ paths:
         content:
           application/json:
             schema: { type: object, required: [email, type, message], properties: { email: { type: string }, orderNumber: { type: string }, type: { type: string, enum: [wismo, exchange, return, complaint, other] }, message: { type: string, maxLength: 2000 } } }
-      responses: { '201': { description: Ticket created } }
+      responses:
+        '201': { description: Ticket created, content: { application/json: { schema: { type: object, required: [ticketNumber], properties: { ticketNumber: { type: string, example: TCK-1 } } } } } }
+        '422': { $ref: '#/components/responses/Invalid' }
     get:
       tags: [support]
       parameters: [ { name: status, in: query, schema: { type: string, enum: [open, waiting, closed] } } ]
@@ -455,6 +458,18 @@ components:
         printJob: { type: object }
         shipment: { type: object }
         invoiceNumber: { type: string }
+    TrackedOrder:
+      type: object
+      required: [number, status, placedAt, timeline, awb, invoiceNumber]
+      properties:
+        number: { type: string }
+        status: { type: string }
+        placedAt: { type: string, format: date-time }
+        timeline:
+          type: array
+          items: { type: object, required: [type, label, at], properties: { type: { type: string }, label: { type: string }, at: { type: string, format: date-time } } }
+        awb: { type: [string, 'null'] }
+        invoiceNumber: { type: [string, 'null'] }
     Ticket:
       type: object
       properties:
