@@ -26,3 +26,14 @@ export async function parseJson<S extends z.ZodType>(
     ? { data: result.data }
     : { response: errorResponse(422, 'validation_failed', fieldErrors(result.error)) };
 }
+
+/** Parses the URL query string with a zod schema; returns the data or a ready 422 response. */
+export function parseQuery<S extends z.ZodType>(
+  request: Request,
+  schema: S,
+): { data: z.infer<S> } | { response: Response } {
+  const result = schema.safeParse(Object.fromEntries(new URL(request.url).searchParams));
+  return result.success
+    ? { data: result.data }
+    : { response: errorResponse(422, 'validation_failed', fieldErrors(result.error)) };
+}

@@ -103,6 +103,11 @@ describe.skipIf(!process.env.DATABASE_URL)('event outbox and events API (databas
     });
     expect((await get('')).status).toBe(401);
     expect((await get('', keys.hq)).status).toBe(200);
+    for (const d of ['fulfilment', 'finance', 'marketing', 'support', 'engineering'] as const) {
+      const res = await get('', keys[d]);
+      expect(res.status, d).toBe(403);
+      expect(await res.json()).toMatchObject({ error: 'forbidden' });
+    }
   });
 
   it('commits events in seq order, so a reader never skips a late commit', async () => {
