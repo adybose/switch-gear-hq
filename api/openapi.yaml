@@ -334,10 +334,11 @@ paths:
       description: >
         Outbox events with seq greater than `after`, oldest first. Page by passing the last
         seq back as `after`. Events become visible in seq order (writers are serialised), so a
-        poller never skips one. Any valid key for now; per-department scopes arrive with T-09.
+        poller never skips one. Needs the `events:read` scope (`hq` and `founder` keys).
       responses:
         '200': { description: Events in order, content: { application/json: { schema: { type: array, items: { $ref: '#/components/schemas/Event' } } } } }
         '401': { description: Missing or invalid API key, content: { application/json: { schema: { $ref: '#/components/schemas/Error' } } } }
+        '403': { $ref: '#/components/responses/Forbidden' }
         '422': { $ref: '#/components/responses/Invalid' }
   /flags:
     get: { tags: [platform], responses: { '200': { description: Feature flags } } }
@@ -388,6 +389,7 @@ components:
   parameters:
     OrderNumber: { name: number, in: path, required: true, schema: { type: string, example: ORD-1042 } }
   responses:
+    Forbidden: { description: The key's department lacks the scope for this endpoint, content: { application/json: { schema: { $ref: '#/components/schemas/Error' } } } }
     NotFound: { description: Not found, content: { application/json: { schema: { $ref: '#/components/schemas/Error' } } } }
     Invalid: { description: Validation failed, content: { application/json: { schema: { $ref: '#/components/schemas/Error' } } } }
     Conflict: { description: Not allowed in the current state, content: { application/json: { schema: { $ref: '#/components/schemas/Error' } } } }
