@@ -327,9 +327,16 @@ paths:
     get:
       tags: [platform]
       parameters:
-        - { name: after, in: query, schema: { type: integer, default: 0 } }
+        - { name: after, in: query, schema: { type: integer, default: 0, minimum: 0, maximum: 2147483647 } }
         - { name: limit, in: query, schema: { type: integer, default: 100, maximum: 500 } }
-      responses: { '200': { description: Events in order, content: { application/json: { schema: { type: array, items: { $ref: '#/components/schemas/Event' } } } } } }
+      description: >
+        Outbox events with seq greater than `after`, oldest first. Page by passing the last
+        seq back as `after`. Events become visible in seq order (writers are serialised), so a
+        poller never skips one. Any valid key for now; per-department scopes arrive with T-09.
+      responses:
+        '200': { description: Events in order, content: { application/json: { schema: { type: array, items: { $ref: '#/components/schemas/Event' } } } } }
+        '401': { description: Missing or invalid API key, content: { application/json: { schema: { $ref: '#/components/schemas/Error' } } } }
+        '422': { $ref: '#/components/responses/Invalid' }
   /flags:
     get: { tags: [platform], responses: { '200': { description: Feature flags } } }
   /flags/{key}:
@@ -345,8 +352,17 @@ paths:
       summary: Partner webhooks; verified by X-SG-Signature HMAC
       parameters:
         - { name: partner, in: path, required: true, schema: { type: string, enum: [paymock, printhub, shipfast] } }
-        - { name: X-SG-Signature, in: header, required: true, schema: { type: string } }
-      responses: { '200': { description: Accepted (idempotent) }, '401': { description: Bad signature } }
+        - { name: X-SG-Signature, in: header, required: true, schema: { type: string, example: 'sha256=3f1c…' }, description: 'sha256=<hex HMAC-SHA256 of the raw body> with the partner''s secret' }
+      requestBody:
+        required: true
+        content: { application/json: { schema: { $ref: '#/components/schemas/WebhookEnvelope' } } }
+      responses:
+        '200':
+          description: Accepted. A repeated eventId changes nothing and returns duplicate.
+          content: { application/json: { schema: { type: object, properties: { eventId: { type: string }, status: { type: string, enum: [processed, ignored, duplicate] } } } } }
+        '401': { description: Missing or bad signature, content: { application/json: { schema: { $ref: '#/components/schemas/Error' } } } }
+        '404': { $ref: '#/components/responses/NotFound' }
+        '422': { $ref: '#/components/responses/Invalid' }
 
 components:
   securitySchemes:
@@ -426,6 +442,14 @@ components:
         status: { type: string, enum: [pending, approved, rejected, expired] }
         decidedBy: { type: string }
         decidedAt: { type: string }
+    WebhookEnvelope:
+      type: object
+      required: [eventId, type, occurredAt, data]
+      properties:
+        eventId: { type: string, description: 'Unique per partner; repeats are ignored' }
+        type: { type: string, example: payment.captured }
+        occurredAt: { type: string, format: date-time }
+        data: { type: object }
     Event:
       type: object
       properties:

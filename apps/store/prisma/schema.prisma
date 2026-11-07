@@ -501,3 +501,27 @@ model Setting {
   key   String @id
   value Json
 }
+
+enum WebhookPartner {
+  paymock
+  printhub
+  shipfast
+}
+
+enum WebhookOutcome {
+  processed
+  ignored
+}
+
+/// One row per partner webhook accepted. The unique (partner, eventId) makes redelivery
+/// a no-op: the second insert fails and the webhook is answered as a duplicate.
+model WebhookReceipt {
+  id         String         @id @default(cuid())
+  partner    WebhookPartner
+  eventId    String
+  type       String
+  outcome    WebhookOutcome
+  receivedAt DateTime       @default(now())
+
+  @@unique([partner, eventId])
+}

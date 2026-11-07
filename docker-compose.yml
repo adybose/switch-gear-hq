@@ -5,6 +5,9 @@ x-common-env: &common-env
   STORE_URL: http://store:3000
   SIM_URL: http://sim:4000
   ORDER_LINK_SECRET: ${ORDER_LINK_SECRET:-test-only-order-link-secret}
+  PAYMOCK_WEBHOOK_SECRET: ${PAYMOCK_WEBHOOK_SECRET:-test_paymock_secret}
+  PRINTHUB_WEBHOOK_SECRET: ${PRINTHUB_WEBHOOK_SECRET:-test_printhub_secret}
+  SHIPFAST_WEBHOOK_SECRET: ${SHIPFAST_WEBHOOK_SECRET:-test_shipfast_secret}
 
 services:
   db:
