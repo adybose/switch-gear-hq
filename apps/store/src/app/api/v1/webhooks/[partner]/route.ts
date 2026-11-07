@@ -10,6 +10,7 @@ import { errorResponse } from '../../../../../server/http';
 import { fieldErrors } from '../../../../../server/validation/checkout';
 import '../../../../../server/paymock';
 import '../../../../../server/printhub';
+import '../../../../../server/shipfast';
 import { envelopeSchema, processWebhook, WebhookRejected } from '../../../../../server/webhooks';
 
 // POST /api/v1/webhooks/{paymock|printhub|shipfast} — signed partner callbacks.

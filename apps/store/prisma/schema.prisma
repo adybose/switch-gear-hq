@@ -337,10 +337,20 @@ model Shipment {
   status    ShipmentStatus @default(pickup_scheduled)
   zone      ShippingZone
   attempts  Int            @default(0)
+  sequence  Int            @default(1)
+  reshipOfId String?       @unique
+  reshipOf  Shipment?      @relation("ReshipChain", fields: [reshipOfId], references: [id])
+  reship    Shipment?      @relation("ReshipChain")
+  approvalId String?
+  approval  ApprovalRequest? @relation(fields: [approvalId], references: [id])
+  bookedAt  DateTime       @default(now())
+  estimatedDeliveryAt DateTime?
+  deliveredAt DateTime?
   costPaise Int
   createdAt DateTime       @default(now())
   updatedAt DateTime       @updatedAt
 
+  @@unique([orderId, sequence])
   @@index([orderId])
   @@index([status])
 }
@@ -477,6 +487,7 @@ model ApprovalRequest {
   createdAt       DateTime         @default(now())
   refunds         Refund[]
   partnerInvoices PartnerInvoice[]
+  shipments       Shipment[]
   discountCodes   DiscountCode[]
 
   @@index([status])

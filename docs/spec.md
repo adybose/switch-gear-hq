@@ -172,6 +172,7 @@ invoice mismatch (PrintHub bills 3 jobs it never printed). `npm run demo:reset` 
 | `printjob.status` | Fulfilment | — |
 | `printjob.misprint` | Fulfilment | Finance |
 | `printjob.late` | Fulfilment | Support |
+| `shipment.status` | Fulfilment | — |
 | `shipment.delivered` | Support | Finance |
 | `shipment.failed`, `shipment.rto` | Fulfilment | Support, Finance |
 | `ticket.created` | Support | — |

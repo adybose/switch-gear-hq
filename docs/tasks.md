@@ -26,7 +26,7 @@ How to use this file:
 | T-11 | Order tracking and contact form | builder | T-06 | MVP | done |
 | T-12 | Admin console | builder | T-09, T-10 | MVP | todo |
 | T-13 | PrintHub simulator and print jobs | builder | T-08, T-09 | MVP | done |
-| T-14 | ShipFast simulator and shipments | builder | T-13 | MVP | todo |
+| T-14 | ShipFast simulator and shipments | builder | T-13 | MVP | done |
 | T-15 | Demo clock and order generator | builder | T-07, T-14 | MVP | todo |
 | T-16 | Double-entry ledger | builder | T-07 | MVP | todo |
 | T-17 | GST invoices and credit notes | builder | T-16 | MVP | todo |

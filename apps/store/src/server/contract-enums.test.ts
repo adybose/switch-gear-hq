@@ -8,6 +8,8 @@ import {
   OrderSource,
   OrderStatus,
   PrintJobStatus,
+  ShipmentStatus,
+  ShippingZone,
   TicketStatus,
   TicketType,
 } from '../generated/prisma/enums';
@@ -43,6 +45,8 @@ const schemas = (spec.components as { schemas: Record<string, { enum?: string[] 
 const cases: [string, Record<string, string>, string[] | undefined][] = [
   ['OrderStatus', OrderStatus, schemas.OrderStatus?.enum],
   ['PrintJobStatus', PrintJobStatus, schemas.PrintJobStatus?.enum],
+  ['ShipmentStatus', ShipmentStatus, schemas.ShipmentStatus?.enum],
+  ['ShippingZone', ShippingZone, schemas.ShippingZone?.enum],
   ['OrderSource', OrderSource, findEnum(paths['/checkout'], 'source')],
   ['TicketStatus', TicketStatus, findEnum(paths['/tickets']?.get, 'status')],
   ['TicketType', TicketType, findEnum(paths['/tickets']?.post, 'type')],

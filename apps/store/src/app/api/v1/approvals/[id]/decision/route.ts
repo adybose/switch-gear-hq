@@ -1,6 +1,7 @@
 import { z } from 'zod';
 import { approvalJson, ApprovalError, decideApproval } from '../../../../../../server/approvals';
 import { authorize } from '../../../../../../server/auth';
+import { ShipmentError } from '../../../../../../server/shipfast';
 import { getDb } from '../../../../../../server/db';
 import { errorResponse, parseJson } from '../../../../../../server/http';
 
@@ -39,7 +40,10 @@ export async function POST(
     });
     return Response.json(approvalJson(decided));
   } catch (err) {
-    if (err instanceof ApprovalError) return errorResponse(err.status, err.code, { id: err.message });
+    if (err instanceof ShipmentError)
+      return errorResponse(err.status, err.code, { message: err.message });
+    if (err instanceof ApprovalError)
+      return errorResponse(err.status, err.code, { id: err.message });
     throw err;
   }
 }

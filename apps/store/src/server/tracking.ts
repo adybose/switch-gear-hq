@@ -6,9 +6,17 @@ const TIMELINE_LABELS: Record<string, string> = {
   'order.paid': 'Payment received',
   'payment.failed': 'Payment failed',
   'order.cancelled': 'Order cancelled',
+  'shipment.status': 'Shipment status updated',
   'shipment.delivered': 'Delivered',
   'shipment.failed': 'Delivery attempt failed',
   'shipment.rto': 'Returning to us',
+};
+
+const SHIPMENT_LABELS: Record<string, string> = {
+  pickup_scheduled: 'Shipment booked',
+  picked_up: 'Picked up by courier',
+  in_transit: 'In transit',
+  out_for_delivery: 'Out for delivery',
 };
 
 export interface TimelineEntry {
@@ -63,7 +71,7 @@ export async function trackOrder(
         ],
       },
       orderBy: { seq: 'asc' },
-      select: { type: true, createdAt: true },
+      select: { type: true, createdAt: true, payload: true },
     }),
     db.customerInvoice.findUnique({ where: { orderId: order.id }, select: { number: true } }),
   ]);
@@ -72,11 +80,16 @@ export async function trackOrder(
     number: order.number,
     status: order.status,
     placedAt: order.placedAt.toISOString(),
-    timeline: events.map((e) => ({
-      type: e.type,
-      label: TIMELINE_LABELS[e.type]!,
-      at: e.createdAt.toISOString(),
-    })),
+    timeline: events.flatMap((e) => {
+      const payload = e.payload as { status?: string; reason?: string };
+      const label =
+        e.type === 'shipment.status'
+          ? SHIPMENT_LABELS[payload.status ?? '']
+          : e.type === 'shipment.failed' && payload.reason === 'lost'
+            ? 'Parcel lost'
+            : TIMELINE_LABELS[e.type];
+      return label ? [{ type: e.type, label, at: e.createdAt.toISOString() }] : [];
+    }),
     awb: order.shipments[0]?.awb ?? null,
     invoiceNumber: invoice?.number ?? null,
   };

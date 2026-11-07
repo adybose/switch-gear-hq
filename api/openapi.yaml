@@ -217,19 +217,54 @@ paths:
   /shipments:
     get:
       tags: [fulfilment]
-      parameters: [ { name: status, in: query, schema: { type: string } } ]
-      responses: { '200': { description: Shipments } }
+      description: 'Requires shipments:read (fulfilment, support, hq, founder). Latest 200 bookings, newest first.'
+      parameters: [ { name: status, in: query, schema: { $ref: '#/components/schemas/ShipmentStatus' } } ]
+      responses:
+        '200': { description: Shipments with orderNumber, content: { application/json: { schema: { type: array, items: { $ref: '#/components/schemas/Shipment' } } } } }
+        '401': { description: Missing or invalid API key }
+        '403': { $ref: '#/components/responses/Forbidden' }
+        '422': { $ref: '#/components/responses/Invalid' }
     post:
       tags: [fulfilment]
-      requestBody: { required: true, content: { application/json: { schema: { type: object, required: [orderNumber], properties: { orderNumber: { type: string } } } } } }
-      responses: { '201': { description: Booked with ShipFast } }
+      description: 'Requires shipments:write (fulfilment). Latest print job must be handed_over; order must be printing with no prior shipment. Acceptance moves order to shipped. Courier prices are 5000/6500/8500 paise for same_city/same_zone/national.'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              additionalProperties: false
+              required: [orderNumber]
+              properties:
+                orderNumber: { type: string, pattern: '^ORD-[0-9]{1,12}$' }
+      responses:
+        '201': { description: Booked with ShipFast, content: { application/json: { schema: { $ref: '#/components/schemas/Shipment' } } } }
+        '401': { description: Missing or invalid API key }
+        '403': { $ref: '#/components/responses/Forbidden' }
+        '404': { $ref: '#/components/responses/NotFound' }
+        '409': { $ref: '#/components/responses/Conflict' }
+        '422': { $ref: '#/components/responses/Invalid' }
+        '503': { description: ShipFast unavailable or unexpected response; safe to retry, content: { application/json: { schema: { $ref: '#/components/schemas/Error' } } } }
   /shipments/{id}/reship:
     post:
       tags: [fulfilment]
-      parameters: [ { name: id, in: path, required: true, schema: { type: string } } ]
+      description: >
+        Requires reship:write (fulfilment). No body. Only the latest returned_to_origin or
+        lost shipment can be replaced. The first reship per order is allowed; subsequent
+        reships require founder approval (limits from Setting). Delivery retries are not
+        reships. Repeated pending requests reuse one approvalId and book nothing until
+        approved. The executor rechecks the source and books once on approval. Each booking
+        has its own outbound cost; RTO doubles the cost of that booking only.
+      parameters: [ { name: id, in: path, required: true, schema: { type: string, minLength: 1, maxLength: 100 } } ]
       responses:
-        '201': { description: Reship booked }
+        '201': { description: Reship booked, content: { application/json: { schema: { $ref: '#/components/schemas/Shipment' } } } }
         '202': { $ref: '#/components/responses/PendingApproval' }
+        '401': { description: Missing or invalid API key }
+        '403': { $ref: '#/components/responses/Forbidden' }
+        '404': { $ref: '#/components/responses/NotFound' }
+        '409': { $ref: '#/components/responses/Conflict' }
+        '422': { $ref: '#/components/responses/Invalid' }
+        '503': { description: ShipFast unavailable; safe to retry, content: { application/json: { schema: { $ref: '#/components/schemas/Error' } } } }
 
   # ---------- finance ----------
   /refunds:
@@ -470,6 +505,32 @@ components:
         acceptedAt: { type: string, format: date-time, description: Business time }
         dueAt: { type: string, format: date-time, description: acceptedAt plus two business days }
         lateReportedAt: { type: [string, 'null'], format: date-time }
+        createdAt: { type: string, format: date-time }
+        updatedAt: { type: string, format: date-time }
+    ShipmentStatus:
+      type: string
+      enum: [pickup_scheduled, picked_up, in_transit, out_for_delivery, delivered, delivery_failed, returned_to_origin, lost]
+    ShippingZone:
+      type: string
+      enum: [same_city, same_zone, national]
+    Shipment:
+      type: object
+      required: [id, orderId, awb, status, zone, attempts, sequence, reshipOfId, approvalId, costPaise, bookedAt, estimatedDeliveryAt, deliveredAt, createdAt, updatedAt]
+      properties:
+        id: { type: string }
+        orderId: { type: string }
+        orderNumber: { type: string, description: Included on list responses }
+        awb: { type: [string, 'null'] }
+        status: { $ref: '#/components/schemas/ShipmentStatus' }
+        zone: { $ref: '#/components/schemas/ShippingZone' }
+        attempts: { type: integer, minimum: 0, maximum: 3, description: Delivery attempts on this AWB }
+        sequence: { type: integer, minimum: 1, description: 1 is the original booking; 2 is the first reship }
+        reshipOfId: { type: [string, 'null'] }
+        approvalId: { type: [string, 'null'], description: Internal approval record ID for gated bookings }
+        costPaise: { type: integer, minimum: 0, description: Outbound rate; doubles on RTO }
+        bookedAt: { type: string, format: date-time, description: Business time }
+        estimatedDeliveryAt: { type: [string, 'null'], format: date-time }
+        deliveredAt: { type: [string, 'null'], format: date-time }
         createdAt: { type: string, format: date-time }
         updatedAt: { type: string, format: date-time }
     CustomerInput:
