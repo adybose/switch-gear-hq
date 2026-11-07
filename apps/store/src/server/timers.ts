@@ -1,5 +1,6 @@
 import { businessNow } from '@switch-gear/shared/clock';
 import { getDb } from './db';
+import { markLatePrintJobs } from './printhub';
 import { cancelUnpaidOrders } from './paymock';
 
 // Background timers in the store process. Each tick reads business time from the sim clock.
@@ -8,7 +9,9 @@ const EVERY_MS = 5000;
 const globalForTimers = globalThis as unknown as { sgTimers?: NodeJS.Timeout };
 
 async function tick(): Promise<void> {
-  const cancelled = await cancelUnpaidOrders(getDb(), await businessNow(), new Date());
+  const now = await businessNow();
+  await markLatePrintJobs(getDb(), now);
+  const cancelled = await cancelUnpaidOrders(getDb(), now, new Date());
   if (cancelled.length > 0) console.log(`[timers] cancelled unpaid: ${cancelled.join(', ')}`);
 }
 

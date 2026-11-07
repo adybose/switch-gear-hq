@@ -173,17 +173,47 @@ paths:
   /print-jobs:
     get:
       tags: [fulfilment]
-      parameters: [ { name: status, in: query, schema: { type: string } } ]
-      responses: { '200': { description: Print jobs } }
+      description: 'Requires print_jobs:read (fulfilment, hq, founder). Latest 200 jobs, newest first.'
+      parameters: [ { name: status, in: query, schema: { $ref: '#/components/schemas/PrintJobStatus' } } ]
+      responses:
+        '200': { description: Print jobs with orderNumber, content: { application/json: { schema: { type: array, items: { $ref: '#/components/schemas/PrintJob' } } } } }
+        '401': { description: Missing or invalid API key }
+        '403': { $ref: '#/components/responses/Forbidden' }
+        '422': { $ref: '#/components/responses/Invalid' }
     post:
       tags: [fulfilment]
-      requestBody: { required: true, content: { application/json: { schema: { type: object, required: [orderNumber], properties: { orderNumber: { type: string } } } } } }
-      responses: { '201': { description: Sent to PrintHub }, '409': { $ref: '#/components/responses/Conflict' } }
+      description: 'Requires print_jobs:write (fulfilment). Only a paid order without a job can be submitted. On partner acceptance, order becomes printing. Parallel or repeated submissions return 409.'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              additionalProperties: false
+              required: [orderNumber]
+              properties:
+                orderNumber: { type: string, pattern: '^ORD-[0-9]{1,12}$' }
+      responses:
+        '201': { description: Sent to PrintHub, content: { application/json: { schema: { $ref: '#/components/schemas/PrintJob' } } } }
+        '401': { description: Missing or invalid API key }
+        '403': { $ref: '#/components/responses/Forbidden' }
+        '404': { $ref: '#/components/responses/NotFound' }
+        '409': { $ref: '#/components/responses/Conflict' }
+        '422': { $ref: '#/components/responses/Invalid' }
+        '503': { description: PrintHub unavailable or unexpected partner response; safe to retry, content: { application/json: { schema: { $ref: '#/components/schemas/Error' } } } }
   /print-jobs/{id}/reprint:
     post:
       tags: [fulfilment]
-      parameters: [ { name: id, in: path, required: true, schema: { type: string } } ]
-      responses: { '201': { description: Reprint requested } }
+      description: 'Requires print_jobs:write (fulfilment). No body. Reprints the latest misprinted job for free, increments attempt, and keeps the order printing. id is the store job ID, not the partner reference.'
+      parameters: [ { name: id, in: path, required: true, schema: { type: string, minLength: 1, maxLength: 100 } } ]
+      responses:
+        '201': { description: Free reprint accepted, content: { application/json: { schema: { $ref: '#/components/schemas/PrintJob' } } } }
+        '401': { description: Missing or invalid API key }
+        '403': { $ref: '#/components/responses/Forbidden' }
+        '404': { $ref: '#/components/responses/NotFound' }
+        '409': { $ref: '#/components/responses/Conflict' }
+        '422': { $ref: '#/components/responses/Invalid' }
+        '503': { description: PrintHub unavailable; safe to retry, content: { application/json: { schema: { $ref: '#/components/schemas/Error' } } } }
   /shipments:
     get:
       tags: [fulfilment]
@@ -423,6 +453,25 @@ components:
     OrderStatus:
       type: string
       enum: [placed, paid, printing, shipped, delivered, cancelled, returned, refunded]
+    PrintJobStatus:
+      type: string
+      enum: [received, in_production, quality_check, packed, handed_over, artwork_rejected, misprint, blank_out_of_stock]
+    PrintJob:
+      type: object
+      required: [id, orderId, partnerRef, status, attempt, costPaise, acceptedAt, dueAt, lateReportedAt, createdAt, updatedAt]
+      properties:
+        id: { type: string }
+        orderId: { type: string }
+        orderNumber: { type: string, description: Included on list responses }
+        partnerRef: { type: [string, 'null'] }
+        status: { $ref: '#/components/schemas/PrintJobStatus' }
+        attempt: { type: integer, minimum: 1 }
+        costPaise: { type: integer, minimum: 0 }
+        acceptedAt: { type: string, format: date-time, description: Business time }
+        dueAt: { type: string, format: date-time, description: acceptedAt plus two business days }
+        lateReportedAt: { type: [string, 'null'], format: date-time }
+        createdAt: { type: string, format: date-time }
+        updatedAt: { type: string, format: date-time }
     CustomerInput:
       type: object
       required: [name, email, phone, address, city, state, pincode]

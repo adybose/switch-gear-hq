@@ -7,6 +7,7 @@ import {
   CampaignChannel,
   OrderSource,
   OrderStatus,
+  PrintJobStatus,
   TicketStatus,
   TicketType,
 } from '../generated/prisma/enums';
@@ -41,6 +42,7 @@ const schemas = (spec.components as { schemas: Record<string, { enum?: string[] 
 
 const cases: [string, Record<string, string>, string[] | undefined][] = [
   ['OrderStatus', OrderStatus, schemas.OrderStatus?.enum],
+  ['PrintJobStatus', PrintJobStatus, schemas.PrintJobStatus?.enum],
   ['OrderSource', OrderSource, findEnum(paths['/checkout'], 'source')],
   ['TicketStatus', TicketStatus, findEnum(paths['/tickets']?.get, 'status')],
   ['TicketType', TicketType, findEnum(paths['/tickets']?.post, 'type')],

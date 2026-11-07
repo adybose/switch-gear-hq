@@ -56,7 +56,7 @@ IDs shown to humans are short and prefixed: `ORD-1042`, `TCK-88`, `APR-7`, `INV-
 | OrderItem | orderId, variantId, qty, unitPricePaise |
 | Payment | orderId, gatewayRef, status, amountPaise, feePaise, feeGstPaise, failureReason, settlementRef, capturedAt, settledAt (a row per PayMock outcome) |
 | Refund | orderId, amountPaise, reason, status (requested, pending_approval, processed, rejected), approvalId |
-| PrintJob | orderId, partnerRef, status, attempt, costPaise |
+| PrintJob | orderId, partnerRef, status, attempt, costPaise, acceptedAt (business), dueAt, lateReportedAt |
 | Shipment | orderId, awb, status, zone, attempts, costPaise |
 | CustomerInvoice | number, orderId, gstType (intra, inter), taxablePaise, cgstPaise, sgstPaise, igstPaise |
 | CreditNote | number, invoiceId, refundId, amounts as invoice |
@@ -117,6 +117,30 @@ commit, and tests for both. All money columns also have non-negative `CHECK` con
 - PayMock gets both halves of that deadline (`expiresAt` business, `minExpiresAt` real) and
   applies the same `isUnpaidExpired()` rule, so it never expires a payment the store would still take.
 - Contract and fee rule: `packages/shared/src/paymock.ts`. PayMock state is in memory.
+
+## PrintHub (printing)
+
+- Fulfilment calls `POST /api/v1/print-jobs` with orderNumber for a paid order, or
+  `/print-jobs/{id}/reprint` for its latest misprint. The store locks the order and calls
+  the signed partner `POST /printhub/v1/print-jobs`; on acceptance it saves the job,
+  changes the order to printing and emits `printjob.status` atomically.
+- Shared zod schemas, statuses and costs: `packages/shared/src/printhub.ts`.
+  Partner input includes internal orderRef, orderNumber, attempt, items (SKU, fit,
+  colour, size, qty, artworkUrl), shipTo and optional reprintOf partner reference.
+  Output: partnerRef, status received, costPaise, acceptedAt (business time).
+- Partner state is in memory, keyed by orderRef + attempt; identical requests reuse
+  acceptance. Per-UTC-date capacity queues jobs above 50/day. Production starts at
+  +1 hour, QC +1 day, packed +1.5 days, handed_over +1.9 days after the reserved slot.
+- Signed `printjob.status` webhooks contain partnerRef, orderRef, orderNumber,
+  attempt, status and affected skus. The sim drains stages sequentially, retrying
+  network/5xx with the same eventId and bytes before advancing; an initial
+  unknown_printjob also retries while a lost create response is recovered.
+- Misprints sample every item at 3%; invalid HTTP artwork rejects; premium olive XXL
+  simulates stock failure. Reprints copy the full job at zero cost and increment attempt.
+- Every transition emits `printjob.status`; misprint also emits `printjob.misprint`.
+  Active jobs beyond acceptedAt + 2 days emit `printjob.late` once. Timers check every
+  5 real seconds and callbacks also check their business occurrence time. The job
+  remains handed_over and order printing until shipment creation (T-14).
 
 ## Demo clock
 

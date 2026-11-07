@@ -318,9 +318,13 @@ model PrintJob {
   status     PrintJobStatus @default(received)
   attempt    Int            @default(1)
   costPaise  Int
+  acceptedAt DateTime       @default(now())
+  dueAt      DateTime       @default(dbgenerated("(CURRENT_TIMESTAMP + '2 days'::interval)"))
+  lateReportedAt DateTime?
   createdAt  DateTime       @default(now())
   updatedAt  DateTime       @updatedAt
 
+  @@unique([orderId, attempt])
   @@index([orderId])
   @@index([status])
 }

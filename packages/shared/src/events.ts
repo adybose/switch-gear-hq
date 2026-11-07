@@ -3,6 +3,7 @@
 // The store writes them to the Event outbox; Gatekeeper reads them from GET /api/v1/events.
 // Payloads carry human-facing IDs (ORD-1042, APR-7) and money in paise, never personal data.
 
+import type { PrintStatus } from './printhub';
 import type { GstType } from './money';
 
 export type Department =
@@ -39,6 +40,13 @@ export interface EventPayloads {
     orderNumber: string;
     totalPaise: number;
     reason: 'unpaid_timeout';
+  };
+  'printjob.status': {
+    orderNumber: string;
+    partnerRef: string;
+    attempt: number;
+    status: PrintStatus;
+    costPaise: number;
   };
   'printjob.misprint': {
     orderNumber: string;
@@ -153,6 +161,7 @@ export const EVENT_TYPES = [
   'order.paid',
   'payment.failed',
   'order.cancelled',
+  'printjob.status',
   'printjob.misprint',
   'printjob.late',
   'shipment.delivered',

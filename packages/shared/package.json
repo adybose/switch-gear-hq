@@ -11,9 +11,13 @@
     "./pricing": "./src/pricing.ts",
     "./shipping": "./src/shipping.ts",
     "./webhooks": "./src/webhooks.ts",
-    "./paymock": "./src/paymock.ts"
+    "./paymock": "./src/paymock.ts",
+    "./printhub": "./src/printhub.ts"
   },
   "scripts": {
     "typecheck": "tsc --noEmit"
+  },
+  "dependencies": {
+    "zod": "^4.6.7"
   }
 }
