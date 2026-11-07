@@ -10,7 +10,7 @@ actions. Eight AI agents, one per department, do the rest. Built for the WeMakeD
 
 ## The idea
 
-The website is real: storefront, checkout, order tracking, admin and a REST API. Around it,
+The website is real: storefront, checkout, order tracking and a REST API (the admin console is pending, T-12). Around it,
 agents run the business the way a small company would: fulfilment sends paid orders to the
 printer, finance refunds and pays partners, support answers customers, marketing runs
 campaigns, engineering fixes bugs. The founder only approves what is over a limit.
@@ -39,7 +39,7 @@ through the `sg` CLI), and the store's approval gates.
 
 ## What is in the repo
 
-- `apps/store`: Next.js storefront, admin and REST API (`api/openapi.yaml`)
+- `apps/store`: Next.js storefront and REST API (admin console pending, T-12) (`api/openapi.yaml`)
 - `apps/sim`: PayMock, PrintHub, ShipFast, order generator, demo clock
 - `apps/gatekeeper`: the custom Switch agent
 - `packages/shared`, `packages/sg-cli`: shared types and the `sg` command

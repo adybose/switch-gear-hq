@@ -28,7 +28,7 @@ and `#support` with the record ID. Point at the hand-off message: role, record I
 
 ## 1:50 The approval gate (50 s)
 
-Live: an over-limit action returns `202` with `APR-n`; Gatekeeper posts it in
+Live: ask for a second reship on one order (T-14). The store returns `202` with `APR-n`; Gatekeeper posts it in
 `#approvals`, `@chief-of-staff` adds context, and you reply `approve APR-n`.
 Gatekeeper checks it is the founder and confirms with the store.
 
