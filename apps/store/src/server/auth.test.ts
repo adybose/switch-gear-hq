@@ -30,6 +30,10 @@ describe('authorize()', () => {
     expect(await call(keys.finance, 'refunds:write')).toEqual({ department: 'finance' });
   });
 
+  it('lets marketing read the order summary through the guard', async () => {
+    expect(await call(keys.marketing, 'order_summary:read')).toEqual({ department: 'marketing' });
+  });
+
   it.each([
     ['fulfilment', 'refunds:write'],
     ['finance', 'print_jobs:write'],
