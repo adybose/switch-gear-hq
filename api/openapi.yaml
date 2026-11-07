@@ -362,10 +362,13 @@ paths:
         '200':
           description: >
             Accepted. A repeated eventId changes nothing and returns duplicate. PayMock sends
-            payment.captured {gatewayRef, orderNumber, amountPaise, feePaise, feeGstPaise, capturedAt},
-            payment.failed {gatewayRef, orderNumber, amountPaise, reason: declined|expired} and
+            payment.captured {gatewayRef, orderRef, orderNumber, amountPaise, feePaise, feeGstPaise, capturedAt},
+            payment.failed {gatewayRef, orderRef, orderNumber, amountPaise, reason: declined|expired} and
             settlement.processed {settlementRef, settledAt, payments: [{gatewayRef, amountPaise, feePaise, feeGstPaise}]}
-            (packages/shared/src/paymock.ts).
+            (packages/shared/src/paymock.ts). All fields are required. orderRef is the store's internal
+            order id, given to PayMock when the payment is opened and echoed back; order numbers restart
+            after a demo reset, so the store accepts a payment only if both orderRef and orderNumber
+            match the same order, and answers 409 unknown_order otherwise.
           content: { application/json: { schema: { type: object, properties: { eventId: { type: string }, status: { type: string, enum: [processed, ignored, duplicate] } } } } }
         '401': { description: Missing or bad signature, content: { application/json: { schema: { $ref: '#/components/schemas/Error' } } } }
         '404': { $ref: '#/components/responses/NotFound' }
