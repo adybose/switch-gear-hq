@@ -6,5 +6,11 @@
   "scripts": {
     "start": "tsx src/index.ts",
     "typecheck": "tsc --noEmit"
+  },
+  "dependencies": {
+    "@switch-gear/shared": "*"
+  },
+  "bin": {
+    "sg": "./bin/sg.mjs"
   }
 }
