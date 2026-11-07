@@ -108,13 +108,32 @@ describe('priceOrder: rules', () => {
     expect(p.lines.every((l) => l.gstRate === 5)).toBe(true);
   });
 
-  it('charges 18% GST on a piece over ₹2,500 before GST, shipping at the higher rate', () => {
+  it('taxes each piece at its own rate in a mixed cart', () => {
     const p = priceOrder({
       lines: [{ sku: 'X', unitPricePaise: 300000, qty: 1 }, classic()],
       state: 'Delhi',
     });
     expect(p.lines.map((l) => l.gstRate)).toEqual([18, 5]);
+    // ₹3,000 at 18% → 2542.37 + 457.63; ₹599 at 5% → 570.48 + 28.52
+    expect(p).toMatchObject({ taxablePaise: 254237 + 57048, igstPaise: 45763 + 2852 });
     expect(p.taxablePaise + p.taxPaise).toBe(p.totalPaise);
+  });
+
+  it('never charges shipping on a cart with an 18% tee, so shipping GST is always 5% in practice', () => {
+    // The cheapest 18% piece (just over ₹2,625) stays over ₹999 even with a 20% code, so
+    // "shipping at the highest rate in the cart" only matters if prices or limits change.
+    const p = priceOrder({
+      lines: [{ sku: 'X', unitPricePaise: 262501, qty: 1 }],
+      codePercent: 20,
+      state: 'Delhi',
+    });
+    expect(p.lines[0]!.gstRate).toBe(5); // after the 20% code it drops under the limit
+    const full = priceOrder({
+      lines: [{ sku: 'X', unitPricePaise: 262501, qty: 1 }],
+      state: 'Delhi',
+    });
+    expect(full.lines[0]!.gstRate).toBe(18);
+    expect([p.shippingPaise, full.shippingPaise]).toEqual([0, 0]);
   });
 
   it('rejects bad input', () => {

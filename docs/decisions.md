@@ -33,8 +33,8 @@ Short, dated log. Newest first. Append; don't rewrite history.
 | 2026-11-07 | Storefront pages read the catalogue from Postgres per request (`connection()`); policy pages are static | `next build` needs no database; catalogue changes show immediately |
 | 2026-11-07 | Cart lives in the browser (localStorage); checkout re-prices every line on the server | No cart table or session; client prices are never trusted |
 | 2026-11-07 | Mockups are SVGs generated at `/artwork/<slug>.svg?colour=<colour>` from the design name | Original artwork only; one URL per design, as the seed stores |
-| 2026-11-07 | The 3-tee 10% discount and a discount code don't stack; the bigger one applies | Simple to explain; caps discounts at the code limit |
-| 2026-11-07 | Free shipping (₹999+) is measured on goods after discounts; shipping is taxed at the highest GST rate in the cart | Spec §2/§6 don't say; this matches what the customer pays |
+| 2026-11-07 | The 3-tee 10% discount and a discount code don't stack; the bigger one applies (founder confirmed) | Simple to explain; caps discounts at the code limit |
+| 2026-11-07 | Free shipping (₹999+) is measured on goods after discounts; shipping is taxed at the highest GST rate in the cart (founder confirmed) | Matches what the customer pays; recorded in spec §2 and §6 |
 | 2026-11-07 | ShipFast service area is a shared rule (`packages/shared/src/shipping.ts`): PINs starting 9, 744, 68255 and 194 are blocked; 560 is same city, 5/6 same zone, rest national | Store checkout and the sim (T-14) agree without a network call |
 | 2026-11-07 | Orders are numbered from a Postgres sequence (ORD-1001 up); demo reset restarts it | No gaps or races from counting rows |
 | 2026-11-07 | Orders store their own delivery details; the Customer row only links orders by email and checkout never updates it | Public checkout can't change another order's address; repeat-refund rule (spec §8) still sees one customer |
