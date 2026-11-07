@@ -65,7 +65,9 @@ paths:
                 source: { type: string, enum: [web, generator], default: web }
       responses:
         '201':
-          description: Order placed; pay at paymentUrl
+          description: >
+            Order placed. paymentUrl (/pay/ORD-…?t=…) redirects to the PayMock page for the order;
+            an order not paid within 30 business minutes is cancelled.
           content: { application/json: { schema: { type: object, properties: { orderNumber: { type: string }, totalPaise: { type: integer }, paymentUrl: { type: string } } } } }
         '422': { $ref: '#/components/responses/Invalid' }
   /checkout/quote:
@@ -358,10 +360,20 @@ paths:
         content: { application/json: { schema: { $ref: '#/components/schemas/WebhookEnvelope' } } }
       responses:
         '200':
-          description: Accepted. A repeated eventId changes nothing and returns duplicate.
+          description: >
+            Accepted. A repeated eventId changes nothing and returns duplicate. PayMock sends
+            payment.captured {gatewayRef, orderNumber, amountPaise, feePaise, feeGstPaise, capturedAt},
+            payment.failed {gatewayRef, orderNumber, amountPaise, reason: declined|expired} and
+            settlement.processed {settlementRef, settledAt, payments: [{gatewayRef, amountPaise, feePaise, feeGstPaise}]}
+            (packages/shared/src/paymock.ts).
           content: { application/json: { schema: { type: object, properties: { eventId: { type: string }, status: { type: string, enum: [processed, ignored, duplicate] } } } } }
         '401': { description: Missing or bad signature, content: { application/json: { schema: { $ref: '#/components/schemas/Error' } } } }
         '404': { $ref: '#/components/responses/NotFound' }
+        '409':
+          description: >
+            Refused for good, so the partner stops retrying; nothing is recorded. Errors:
+            unknown_order, amount_mismatch, order_not_payable (e.g. cancelled as unpaid), payment_conflict, invalid_data.
+          content: { application/json: { schema: { $ref: '#/components/schemas/Error' } } }
         '422': { $ref: '#/components/responses/Invalid' }
 
 components:

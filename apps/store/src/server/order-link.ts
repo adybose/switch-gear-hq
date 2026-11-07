@@ -24,3 +24,8 @@ export function verifyOrderToken(orderNumber: string, token: string | undefined 
 export function orderPath(orderNumber: string): string {
   return `/orders/${encodeURIComponent(orderNumber)}?t=${orderToken(orderNumber)}`;
 }
+
+/** Path that opens the order's PayMock payment, e.g. `/pay/ORD-1001?t=...`. */
+export function payPath(orderNumber: string): string {
+  return `/pay/${encodeURIComponent(orderNumber)}?t=${orderToken(orderNumber)}`;
+}

@@ -277,7 +277,11 @@ model Payment {
   gatewayRef  String        @unique
   status      PaymentStatus @default(created)
   amountPaise Int
-  feePaise    Int           @default(0)
+  // Gateway fee (2%) and the 18% GST on it, as reported by the gateway on capture.
+  feePaise      Int           @default(0)
+  feeGstPaise   Int           @default(0)
+  failureReason String?
+  settlementRef String?
   createdAt   DateTime      @default(now())
   capturedAt  DateTime?
   settledAt   DateTime?

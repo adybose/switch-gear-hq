@@ -10,7 +10,8 @@
     "./clock": "./src/clock.ts",
     "./pricing": "./src/pricing.ts",
     "./shipping": "./src/shipping.ts",
-    "./webhooks": "./src/webhooks.ts"
+    "./webhooks": "./src/webhooks.ts",
+    "./paymock": "./src/paymock.ts"
   },
   "scripts": {
     "typecheck": "tsc --noEmit"

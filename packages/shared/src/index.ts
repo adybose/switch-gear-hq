@@ -16,3 +16,4 @@ export * from './events';
 export * from './clock';
 export * from './pricing';
 export * from './shipping';
+export * from './paymock';
