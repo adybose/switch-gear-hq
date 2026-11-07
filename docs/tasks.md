@@ -36,7 +36,7 @@ How to use this file:
 | T-21 | Discount codes, campaigns, ad simulator | builder | T-10, T-15 | Stretch (codes MVP) | todo |
 | T-22 | Tickets, ticket simulator, email outbox | builder | T-11, T-15 | MVP | todo |
 | T-23 | `sg` CLI | builder | T-09 | MVP | done |
-| T-24 | Gatekeeper (custom Switch agent) | builder | T-08, T-10 | MVP | todo |
+| T-24 | Gatekeeper (custom Switch agent) | builder | T-08, T-10 | MVP | done |
 | T-25 | Role, room and business skill files; agent folders | builder | T-23 | MVP | todo |
 | T-26 | Switch template and onboarding | founder | T-24, T-25 | MVP | todo |
 | T-27 | Scenario buttons | builder | T-15, T-19 | MVP (3 of 6) | todo |

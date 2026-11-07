@@ -18,7 +18,7 @@ Customers ──► apps/store (Next.js) ◄──calls/webhooks──► apps/s
 | --- | --- | --- |
 | `store` | 3000 | Storefront, admin console, REST API `/api/v1`, approval gates, event outbox |
 | `sim` | 4000 | PayMock, PrintHub, ShipFast, order generator, ad sim, ticket sim, demo clock, scenarios |
-| `gatekeeper` | 4100 (health only) | Polls store events → posts to Switch rooms; handles founder approvals; timers |
+| `gatekeeper` | 4100 (health) | Polls store events → posts to Switch rooms; handles founder approvals; timers |
 | `db` | 5432 | Postgres 16 |
 
 The simulator never touches the store's database. It talks to the store only through the store
