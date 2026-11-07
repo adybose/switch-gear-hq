@@ -45,6 +45,7 @@ export interface PaymockOptions {
 
 interface Payment {
   gatewayRef: string;
+  orderRef: string;
   orderNumber: string;
   amountPaise: number;
   returnUrl: string;
@@ -74,6 +75,8 @@ function isCreateBody(body: unknown): body is PaymockCreatePayment {
   if (body === null || typeof body !== 'object') return false;
   const b = body as Record<string, unknown>;
   return (
+    typeof b.orderRef === 'string' &&
+    /^[A-Za-z0-9_-]{1,64}$/.test(b.orderRef) &&
     typeof b.orderNumber === 'string' &&
     /^ORD-\d{1,12}$/.test(b.orderNumber) &&
     Number.isSafeInteger(b.amountPaise) &&
@@ -147,6 +150,7 @@ export function registerPaymock(app: FastifyInstance, options: PaymockOptions): 
       'payment.captured',
       {
         gatewayRef: payment.gatewayRef,
+        orderRef: payment.orderRef,
         orderNumber: payment.orderNumber,
         amountPaise: payment.amountPaise,
         ...payment.fee,
@@ -163,6 +167,7 @@ export function registerPaymock(app: FastifyInstance, options: PaymockOptions): 
     payment.status = 'failed';
     await deliver('payment.failed', {
       gatewayRef: payment.gatewayRef,
+      orderRef: payment.orderRef,
       orderNumber: payment.orderNumber,
       amountPaise: payment.amountPaise,
       reason,
@@ -236,15 +241,17 @@ export function registerPaymock(app: FastifyInstance, options: PaymockOptions): 
       if (!isCreateBody(req.body)) return reply.code(422).send({ error: 'validation_failed' });
       const body = req.body;
 
-      // One open payment per order: a second "Pay now" reuses it.
+      // One open payment per order: a second "Pay now" reuses it. Keyed on orderRef, so an
+      // order number reused after a demo reset gets a fresh payment.
       let payment = [...payments.values()].find(
         (p) =>
-          p.orderNumber === body.orderNumber &&
+          p.orderRef === body.orderRef &&
           (p.status === 'created' || p.status === 'pending' || p.status === 'captured'),
       );
       if (!payment) {
         payment = {
           gatewayRef: `pay_${randomBytes(8).toString('hex')}`,
+          orderRef: body.orderRef,
           orderNumber: body.orderNumber,
           amountPaise: body.amountPaise,
           returnUrl: body.returnUrl,

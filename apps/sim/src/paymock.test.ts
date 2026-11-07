@@ -51,6 +51,7 @@ afterEach(async () => {
 });
 
 const createBody = {
+  orderRef: 'cm_order_a',
   orderNumber: 'ORD-1001',
   amountPaise: 59900,
   returnUrl: 'http://localhost:3000/orders/ORD-1001?t=abc',
@@ -98,6 +99,26 @@ describe('PayMock (sim)', () => {
     expect(await openPayment(sim)).toBe(await openPayment(sim));
   });
 
+  it('gives a reused order number (after a demo reset) its own payment', async () => {
+    const sim = (current = setup());
+    const old = await openPayment(sim);
+    await click(sim, old, 'success');
+
+    // demo:reset restarts numbering: a new ORD-1001 with a new internal id and amount.
+    const res = await create(sim, { ...createBody, orderRef: 'cm_order_new', amountPaise: 99900 });
+    const fresh = res.json() as { gatewayRef: string; status: string };
+    expect(fresh.gatewayRef).not.toBe(old);
+    expect(fresh.status).toBe('created');
+    const page = await sim.app.inject({ method: 'GET', url: `/paymock/pay/${fresh.gatewayRef}` });
+    expect(page.body).toContain('₹999');
+    expect(page.body).toContain(`/paymock/pay/${fresh.gatewayRef}/success`);
+
+    await click(sim, fresh.gatewayRef, 'success');
+    expect(sim.sent.at(-1)?.body).toMatchObject({
+      data: { orderRef: 'cm_order_new', orderNumber: 'ORD-1001', amountPaise: 99900 },
+    });
+  });
+
   it('shows the pay page with the amount and three choices', async () => {
     const sim = (current = setup());
     const ref = await openPayment(sim);
@@ -124,6 +145,7 @@ describe('PayMock (sim)', () => {
         type: 'payment.captured',
         data: {
           gatewayRef: ref,
+          orderRef: 'cm_order_a',
           orderNumber: 'ORD-1001',
           amountPaise: 59900,
           feePaise: 1198,
@@ -202,6 +224,7 @@ describe('PayMock (sim)', () => {
     await click(sim, a, 'success');
     const second = await create(sim, {
       ...createBody,
+      orderRef: 'cm_order_b',
       orderNumber: 'ORD-1002',
       amountPaise: 79900,
     });

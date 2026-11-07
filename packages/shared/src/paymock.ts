@@ -38,6 +38,11 @@ export const SETTLEMENT_AFTER_MS = 2 * 24 * 60 * MINUTE;
 
 /** Body of POST /paymock/v1/payments. */
 export interface PaymockCreatePayment {
+  /**
+   * The store's internal order id. Unlike the order number it is never reused (a demo reset
+   * restarts numbering), so PayMock keys payments on it and echoes it in every webhook.
+   */
+  orderRef: string;
   orderNumber: string;
   amountPaise: number;
   /** Where the pay page sends the customer back to. */
@@ -61,6 +66,7 @@ export type PaymockFailureReason = 'declined' | 'expired';
 export interface PaymockWebhookData {
   'payment.captured': {
     gatewayRef: string;
+    orderRef: string;
     orderNumber: string;
     amountPaise: number;
     feePaise: number;
@@ -69,6 +75,7 @@ export interface PaymockWebhookData {
   };
   'payment.failed': {
     gatewayRef: string;
+    orderRef: string;
     orderNumber: string;
     amountPaise: number;
     reason: PaymockFailureReason;

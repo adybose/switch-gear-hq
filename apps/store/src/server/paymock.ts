@@ -22,6 +22,7 @@ const iso = z.iso.datetime({ offset: true });
 
 const capturedData = z.object({
   gatewayRef: z.string().min(1).max(100),
+  orderRef: z.string().min(1).max(64),
   orderNumber: z.string().min(1).max(40),
   amountPaise: paise,
   feePaise: paise,
@@ -31,6 +32,7 @@ const capturedData = z.object({
 
 const failedData = z.object({
   gatewayRef: z.string().min(1).max(100),
+  orderRef: z.string().min(1).max(64),
   orderNumber: z.string().min(1).max(40),
   amountPaise: paise,
   reason: z.enum(['declined', 'expired']),
@@ -51,17 +53,25 @@ function parseData<S extends z.ZodType>(schema: S, data: unknown): z.infer<S> {
   return result.data;
 }
 
+/**
+ * The order must match both the number and the internal id PayMock was given, so a payment
+ * opened before a demo reset can't land on a new order that reuses the number.
+ */
+function unknownOrder(data: { orderRef: string; orderNumber: string }): WebhookRejected {
+  return new WebhookRejected('unknown_order', `No order ${data.orderNumber} (${data.orderRef}).`);
+}
+
 /** payment.captured: the order is paid. Refused if the order can't take this payment. */
 export async function handleCaptured(
   tx: Prisma.TransactionClient,
   raw: Record<string, unknown>,
 ): Promise<void> {
   const data = parseData(capturedData, raw);
-  const order = await tx.order.findUnique({
-    where: { number: data.orderNumber },
+  const order = await tx.order.findFirst({
+    where: { id: data.orderRef, number: data.orderNumber },
     include: { items: { select: { qty: true } } },
   });
-  if (!order) throw new WebhookRejected('unknown_order', `No order ${data.orderNumber}.`);
+  if (!order) throw unknownOrder(data);
 
   const existing = await tx.payment.findUnique({ where: { gatewayRef: data.gatewayRef } });
   if (existing?.status === 'captured' && existing.orderId === order.id) return; // replayed
@@ -121,8 +131,10 @@ export async function handleFailed(
   occurredAt: Date,
 ): Promise<void> {
   const data = parseData(failedData, raw);
-  const order = await tx.order.findUnique({ where: { number: data.orderNumber } });
-  if (!order) throw new WebhookRejected('unknown_order', `No order ${data.orderNumber}.`);
+  const order = await tx.order.findFirst({
+    where: { id: data.orderRef, number: data.orderNumber },
+  });
+  if (!order) throw unknownOrder(data);
 
   const existing = await tx.payment.findUnique({ where: { gatewayRef: data.gatewayRef } });
   if (existing?.status === 'failed' && existing.orderId === order.id) return; // replayed
@@ -172,16 +184,17 @@ export async function handleSettlement(
   const data = parseData(settlementData, raw);
   const settledAt = new Date(data.settledAt);
   const refs = [...new Set(data.payments.map((p) => p.gatewayRef))];
-  const due = await tx.payment.findMany({
-    where: { gatewayRef: { in: refs }, status: 'captured', settledAt: null },
-    select: { id: true, amountPaise: true, feePaise: true, feeGstPaise: true },
-  });
+  // Claim the payments in one conditional UPDATE. Row locks make a concurrent batch for the
+  // same payment wait, then re-check `settledAt IS NULL` and claim nothing, so a payment is
+  // settled (and counted in an event) exactly once.
+  const due = await tx.$queryRaw<{ amountPaise: number; feePaise: number; feeGstPaise: number }[]>`
+    UPDATE "Payment"
+    SET "settledAt" = (${settledAt.toISOString()}::timestamptz AT TIME ZONE 'UTC'),
+        "settlementRef" = ${data.settlementRef}
+    WHERE "gatewayRef" = ANY(${refs}) AND "status" = 'captured' AND "settledAt" IS NULL
+    RETURNING "amountPaise", "feePaise", "feeGstPaise"`;
   if (due.length === 0) return;
 
-  await tx.payment.updateMany({
-    where: { id: { in: due.map((p) => p.id) } },
-    data: { settledAt, settlementRef: data.settlementRef },
-  });
   await recordEvent(tx, {
     type: 'settlement.received',
     entityType: 'settlement',
@@ -271,11 +284,12 @@ export async function openPayment(
 ): Promise<PaymockPayment | null> {
   const order = await db.order.findUnique({
     where: { number: orderNumber },
-    select: { status: true, totalPaise: true, placedAt: true },
+    select: { id: true, status: true, totalPaise: true, placedAt: true },
   });
   if (!order || order.status !== 'placed') return null;
 
   const body: PaymockCreatePayment = {
+    orderRef: order.id,
     orderNumber,
     amountPaise: order.totalPaise,
     returnUrl: options.returnUrl,

@@ -51,3 +51,5 @@ Short, dated log. Newest first. Append; don't rewrite history.
 | 2026-11-07 | Store refuses a capture for a non-placed order or wrong amount with 409; PayMock then voids it | A late capture can't revive a cancelled order or take money for it |
 | 2026-11-07 | Payment stores the 2% fee and its 18% GST separately (`feePaise`, `feeGstPaise`) | The ledger (T-16) books the fee as expense and its GST as input credit |
 | 2026-11-07 | PayMock keeps its state in memory; the sim clock speed comes from `SIM_CLOCK_SPEED` until T-15 | Sim restarts are rare in the demo; the unpaid timer cleans up |
+| 2026-11-07 | PayMock keys payments on the store's internal order id (`orderRef`) and echoes it in webhooks; the store matches id and number | Order numbers restart after `demo:reset`; a stale payment can't open or pay a new order |
+| 2026-11-07 | Settlement claims payments with one conditional `UPDATE … RETURNING` | Two racing batches can't both settle (and report) the same payment |

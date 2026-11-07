@@ -45,8 +45,12 @@ describe.skipIf(!process.env.DATABASE_URL)('PayMock in the store (database)', ()
       }),
       PLACED_AT,
     );
-    return { number: placed.orderNumber, total: placed.pricing.totalPaise };
+    const { id } = await db.order.findUniqueOrThrow({ where: { number: placed.orderNumber } });
+    orderRefs.set(placed.orderNumber, id);
+    return { number: placed.orderNumber, total: placed.pricing.totalPaise, id };
   }
+  /** Internal order id by number, as PayMock was given it. */
+  const orderRefs = new Map<string, string>();
 
   let seq = 0;
   async function send(type: string, data: Record<string, unknown>, eventId = `evt_${++seq}`) {
@@ -64,6 +68,7 @@ describe.skipIf(!process.env.DATABASE_URL)('PayMock in the store (database)', ()
 
   const captured = (number: string, amountPaise: number, gatewayRef = `pay_${number}`) => ({
     gatewayRef,
+    orderRef: orderRefs.get(number) ?? 'cm_unknown',
     orderNumber: number,
     amountPaise,
     ...gatewayFee(amountPaise),
@@ -80,6 +85,7 @@ describe.skipIf(!process.env.DATABASE_URL)('PayMock in the store (database)', ()
   });
   beforeEach(async () => {
     await resetDemo(db, options);
+    orderRefs.clear();
     registerPaymockHandlers();
   });
   afterEach(() => clearWebhookHandlers());
@@ -150,6 +156,7 @@ describe.skipIf(!process.env.DATABASE_URL)('PayMock in the store (database)', ()
     const { number, total } = await order();
     const res = await send('payment.failed', {
       gatewayRef: 'pay_f',
+      orderRef: orderRefs.get(number),
       orderNumber: number,
       amountPaise: total,
       reason: 'declined',
@@ -237,6 +244,62 @@ describe.skipIf(!process.env.DATABASE_URL)('PayMock in the store (database)', ()
     expect(await eventsOf('settlement.received')).toHaveLength(1);
   });
 
+  it('refuses a payment opened for an order from before a demo reset', async () => {
+    const before = await order();
+    const stale = captured(before.number, before.total);
+    await resetDemo(db, options);
+    const after = await order(); // same number, new internal id
+    expect(after.number).toBe(before.number);
+
+    const res = await send('payment.captured', stale);
+    expect(res).toMatchObject({ status: 409, body: { error: 'unknown_order' } });
+    expect(await statusOf(after.number)).toBe('placed');
+  });
+
+  it('settles a payment once when two batches race for it', async () => {
+    const a = await order();
+    await send('payment.captured', captured(a.number, a.total));
+    const batch = (ref: string) => ({
+      settlementRef: ref,
+      settledAt: '2026-11-09T10:05:00.000Z',
+      payments: [{ gatewayRef: `pay_${a.number}` }],
+    });
+
+    // Hold the Payment row so both batches are in flight before either can claim it.
+    let release!: () => void;
+    let locked!: () => void;
+    const isLocked = new Promise<void>((r) => (locked = r));
+    const holder = db.$transaction(
+      async (tx) => {
+        await tx.$queryRaw`SELECT 1 FROM "Payment" WHERE "gatewayRef" = ${`pay_${a.number}`} FOR UPDATE`;
+        locked();
+        await new Promise<void>((r) => (release = r));
+      },
+      { timeout: 20_000 },
+    );
+    await isLocked;
+    const racing = Promise.all([
+      send('settlement.processed', batch('stl_a')),
+      send('settlement.processed', batch('stl_b')),
+    ]);
+    await new Promise((r) => setTimeout(r, 300));
+    release();
+    await holder;
+    const results = await racing;
+
+    expect(results.map((r) => r.status)).toEqual([200, 200]);
+    const events = await eventsOf('settlement.received');
+    expect(events).toHaveLength(1);
+    expect(events[0]?.payload).toMatchObject({ paymentCount: 1 });
+    const payment = await db.payment.findUniqueOrThrow({
+      where: { gatewayRef: `pay_${a.number}` },
+    });
+    expect(payment.settlementRef).toBe(
+      (events[0]?.payload as { settlementRef: string }).settlementRef,
+    );
+    expect(payment.settledAt).toEqual(new Date('2026-11-09T10:05:00.000Z'));
+  });
+
   it('openPayment asks PayMock with a signed request and the order deadline', async () => {
     const { number, total } = await order();
     let seen: { url: string; raw: string; signed: boolean } | undefined;
@@ -260,6 +323,7 @@ describe.skipIf(!process.env.DATABASE_URL)('PayMock in the store (database)', ()
     expect(seen?.url).toBe('http://sim.test/paymock/v1/payments');
     expect(seen?.signed).toBe(true);
     expect(JSON.parse(seen!.raw)).toEqual({
+      orderRef: orderRefs.get(number),
       orderNumber: number,
       amountPaise: total,
       returnUrl: 'http://localhost:3000/orders/x',
