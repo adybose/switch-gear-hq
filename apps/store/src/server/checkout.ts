@@ -102,8 +102,8 @@ export interface PlacedOrder {
 }
 
 /**
- * Places an order: checks the PIN and code, prices from the catalogue, reuses the customer
- * by email, creates the order (`placed`) and writes `order.placed`, all in one transaction.
+ * Places an order: checks the PIN and code, prices from the catalogue, links the customer
+ * by email (delivery details are stored on the order), creates the order (`placed`) and writes `order.placed`, all in one transaction.
  */
 export async function placeOrder(
   db: PrismaClient,
@@ -130,15 +130,12 @@ export async function placeOrder(
       state: input.customer.state,
     });
 
+    // The Customer row links orders by email (e.g. for the repeat-refund rule). Checkout never
+    // updates it: anyone can type any email, so delivery details live on each order instead.
     const email = input.customer.email.toLowerCase();
-    const details = { ...input.customer, email };
-    const existing = await tx.customer.findFirst({
-      where: { email },
-      orderBy: { createdAt: 'asc' },
-    });
-    const customer = existing
-      ? await tx.customer.update({ where: { id: existing.id }, data: details })
-      : await tx.customer.create({ data: details });
+    const customer =
+      (await tx.customer.findFirst({ where: { email }, orderBy: { createdAt: 'asc' } })) ??
+      (await tx.customer.create({ data: { ...input.customer, email } }));
 
     const [{ n }] = await tx.$queryRaw<[{ n: bigint }]>`SELECT nextval('order_number_seq') AS n`;
     const orderNumber = `ORD-${n}`;
@@ -147,6 +144,12 @@ export async function placeOrder(
       data: {
         number: orderNumber,
         customerId: customer.id,
+        shipName: input.customer.name,
+        shipPhone: input.customer.phone,
+        shipAddress: input.customer.address,
+        shipCity: input.customer.city,
+        shipState: input.customer.state,
+        shipPincode: input.customer.pincode,
         status: 'placed',
         subtotalPaise: pricing.subtotalPaise,
         discountPaise: pricing.discountPaise,
@@ -197,7 +200,10 @@ export async function getOrderSummary(db: PrismaClient, orderNumber: string) {
       totalPaise: true,
       discountCode: true,
       placedAt: true,
-      customer: { select: { name: true, city: true, state: true, pincode: true } },
+      shipName: true,
+      shipCity: true,
+      shipState: true,
+      shipPincode: true,
       items: {
         select: {
           qty: true,

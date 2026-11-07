@@ -37,6 +37,6 @@ Short, dated log. Newest first. Append; don't rewrite history.
 | 2026-11-07 | Free shipping (₹999+) is measured on goods after discounts; shipping is taxed at the highest GST rate in the cart | Spec §2/§6 don't say; this matches what the customer pays |
 | 2026-11-07 | ShipFast service area is a shared rule (`packages/shared/src/shipping.ts`): PINs starting 9, 744, 68255 and 194 are blocked; 560 is same city, 5/6 same zone, rest national | Store checkout and the sim (T-14) agree without a network call |
 | 2026-11-07 | Orders are numbered from a Postgres sequence (ORD-1001 up); demo reset restarts it | No gaps or races from counting rows |
-| 2026-11-07 | Customers are reused by email (latest details win) | Needed for "2nd refund to the same customer" (spec §8) |
+| 2026-11-07 | Orders store their own delivery details; the Customer row only links orders by email and checkout never updates it | Public checkout can't change another order's address; repeat-refund rule (spec §8) still sees one customer |
 | 2026-11-07 | Order confirmation links carry an HMAC token (`ORDER_LINK_SECRET`); until PayMock (T-07) `paymentUrl` is that page | Order numbers are guessable; the token isn't |
 | 2026-11-07 | Added `POST /checkout/quote` (in openapi.yaml) | Checkout page shows totals, code and PIN problems before the order is placed |

@@ -38,7 +38,7 @@ export default async function OrderConfirmationPage({ params, searchParams }: Pr
   return (
     <div className="max-w-2xl space-y-6">
       <div className="space-y-1">
-        <p className="text-sm text-neutral-500">Thanks, {order.customer.name}.</p>
+        <p className="text-sm text-neutral-500">Thanks, {order.shipName}.</p>
         <h1 className="text-3xl font-bold">
           Order <span data-testid="order-number">{order.number}</span>
         </h1>
@@ -91,8 +91,8 @@ export default async function OrderConfirmationPage({ params, searchParams }: Pr
       </dl>
 
       <p className="text-sm text-neutral-600">
-        Shipping to {order.customer.city}, {order.customer.state} {order.customer.pincode}. Keep
-        your order number to track it.
+        Shipping to {order.shipCity}, {order.shipState} {order.shipPincode}. Keep your order number
+        to track it.
       </p>
       <Link href="/" className="inline-block font-medium underline">
         Keep shopping

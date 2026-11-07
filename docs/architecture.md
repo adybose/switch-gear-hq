@@ -51,8 +51,8 @@ IDs shown to humans are short and prefixed: `ORD-1042`, `TCK-88`, `APR-7`, `INV-
 | --- | --- |
 | Product | slug, name, collection, description, artworkUrl, status (draft, published) |
 | Variant | productId, sku, fit, colour, size, pricePaise, active |
-| Customer | name, email (`@example.com`), phone, address, city, state, pincode |
-| Order | number, customerId, status, subtotalPaise, discountPaise, shippingPaise, taxPaise, totalPaise, discountCode, source (web, generator), placedAt |
+| Customer | name, email (`@example.com`), phone, address, city, state, pincode (first order's details; links orders by email, never updated by checkout) |
+| Order | number, customerId, shipName, shipPhone, shipAddress, shipCity, shipState, shipPincode (per-order delivery details), status, subtotalPaise, discountPaise, shippingPaise, taxPaise, totalPaise, discountCode, source (web, generator), placedAt |
 | OrderItem | orderId, variantId, qty, unitPricePaise |
 | Payment | orderId, gatewayRef, status, amountPaise, feePaise, capturedAt, settledAt |
 | Refund | orderId, amountPaise, reason, status (requested, pending_approval, processed, rejected), approvalId |

@@ -226,6 +226,14 @@ model Order {
   number        String           @unique
   customerId    String
   customer      Customer         @relation(fields: [customerId], references: [id])
+  // Delivery details as entered for this order. Never changed by later orders from the
+  // same email; the Customer row only links orders by email.
+  shipName      String
+  shipPhone     String
+  shipAddress   String
+  shipCity      String
+  shipState     String
+  shipPincode   String
   status        OrderStatus      @default(placed)
   subtotalPaise Int
   discountPaise Int              @default(0)

@@ -2,7 +2,7 @@ import { mkdtempSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { afterAll, beforeAll, beforeEach, describe, expect, it } from 'vitest';
-import { CheckoutError, placeOrder, quoteCheckout } from './checkout';
+import { CheckoutError, getOrderSummary, placeOrder, quoteCheckout } from './checkout';
 import { createDb, type Db } from './db';
 import { resetDemo } from './seed/seed';
 import { checkoutInput, type CheckoutInput } from './validation/checkout';
@@ -97,18 +97,39 @@ describe.skipIf(!process.env.DATABASE_URL)('checkout (database)', () => {
     expect((await placeOrder(db, input(), NOW)).orderNumber).toBe('ORD-1001');
   });
 
-  it('reuses the customer by email and keeps their latest details', async () => {
-    await placeOrder(db, input(), NOW);
-    await placeOrder(
+  it('a second order with the same email never changes the first order', async () => {
+    const first = await placeOrder(db, input(), NOW);
+    const second = await placeOrder(
       db,
       input({
-        customer: { ...customer, email: 'asha.rao@EXAMPLE.com', city: 'Mysuru', pincode: '570001' },
+        customer: {
+          name: 'Someone Else',
+          email: 'asha.rao@EXAMPLE.com',
+          phone: '9000000001',
+          address: '9 Other Road',
+          city: 'New Delhi',
+          state: 'Delhi',
+          pincode: '110001',
+        },
       }),
       NOW,
     );
+
+    const firstOrder = await getOrderSummary(db, first.orderNumber);
+    expect(firstOrder).toMatchObject({
+      shipName: 'Asha Rao',
+      shipCity: 'Bengaluru',
+      shipState: 'Karnataka',
+      shipPincode: '560034',
+    });
+    const secondOrder = await getOrderSummary(db, second.orderNumber);
+    expect(secondOrder).toMatchObject({ shipName: 'Someone Else', shipCity: 'New Delhi' });
+    expect(second.pricing.gstType).toBe('inter'); // GST follows each order's own state
+
+    // Both orders link to one customer, whose details are never overwritten.
     const customers = await db.customer.findMany();
     expect(customers).toHaveLength(1);
-    expect(customers[0]).toMatchObject({ city: 'Mysuru', pincode: '570001' });
+    expect(customers[0]).toMatchObject({ name: 'Asha Rao', city: 'Bengaluru' });
     expect(await db.order.count({ where: { customerId: customers[0]!.id } })).toBe(2);
   });
 
