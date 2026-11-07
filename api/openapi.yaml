@@ -575,19 +575,28 @@ components:
         variants: { type: array, items: { type: object, properties: { sku: { type: string }, fit: { type: string }, colour: { type: string }, size: { type: string }, pricePaise: { type: integer } } } }
     Order:
       type: object
+      required: [number, status, items, subtotalPaise, discountPaise, shippingPaise, taxPaise, totalPaise, timeline, printJob, shipment, invoiceNumber]
       properties:
         number: { type: string }
         status: { $ref: '#/components/schemas/OrderStatus' }
-        items: { type: array, items: { type: object, properties: { sku: { type: string }, qty: { type: integer }, unitPricePaise: { type: integer } } } }
+        items: { type: array, items: { type: object, required: [sku, qty, unitPricePaise], properties: { sku: { type: string }, qty: { type: integer }, unitPricePaise: { type: integer } } } }
         subtotalPaise: { type: integer }
         discountPaise: { type: integer }
         shippingPaise: { type: integer }
         taxPaise: { type: integer }
         totalPaise: { type: integer }
-        timeline: { type: array, items: { type: object, properties: { status: { type: string }, at: { type: string } } } }
-        printJob: { type: object }
-        shipment: { type: object }
-        invoiceNumber: { type: string }
+        timeline: { type: array, items: { type: object, required: [status, at], properties: { status: { type: string, enum: [placed, paid, cancelled] }, at: { type: string, format: date-time } } } }
+        printJob:
+          type: [object, 'null']
+          description: Latest print job; null until one is submitted.
+          required: [partnerRef, status, attempt]
+          properties: { partnerRef: { type: [string, 'null'] }, status: { $ref: '#/components/schemas/PrintJobStatus' }, attempt: { type: integer } }
+        shipment:
+          type: [object, 'null']
+          description: Latest shipment; null until one is booked.
+          required: [awb, status, sequence]
+          properties: { awb: { type: [string, 'null'] }, status: { type: string }, sequence: { type: integer } }
+        invoiceNumber: { type: [string, 'null'], description: Null until an invoice is issued. }
     TrackedOrder:
       type: object
       required: [number, status, placedAt, timeline, awb, invoiceNumber]

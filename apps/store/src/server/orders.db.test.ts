@@ -1,6 +1,8 @@
 import { mkdtempSync, readFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
+import { fileURLToPath } from 'node:url';
+import { parse } from 'yaml';
 import { afterAll, beforeAll, beforeEach, describe, expect, it } from 'vitest';
 import { GET as listRoute } from '../app/api/v1/orders/route';
 import { GET as getRoute } from '../app/api/v1/orders/[number]/route';
@@ -11,6 +13,45 @@ import { createDb, type Db } from './db';
 import { handleCaptured } from './paymock';
 import { resetDemo } from './seed/seed';
 import { checkoutInput } from './validation/checkout';
+
+type Schema = {
+  $ref?: string;
+  type?: string | string[];
+  required?: string[];
+  properties?: Record<string, Schema>;
+  items?: Schema;
+  enum?: string[];
+};
+const spec = parse(
+  readFileSync(fileURLToPath(new URL('../../../../api/openapi.yaml', import.meta.url)), 'utf8'),
+) as { components: { schemas: Record<string, Schema> } };
+
+/** Minimal OpenAPI schema check (type, nullability, required, enum, items); returns problems. */
+function violations(value: unknown, schema: Schema, path = 'order'): string[] {
+  if (schema.$ref)
+    return violations(value, spec.components.schemas[schema.$ref.split('/').pop()!]!, path);
+  if (schema.enum && !schema.enum.includes(value as string))
+    return [`${path}: ${String(value)} not in enum`];
+  const types = [schema.type ?? []].flat();
+  const actual = value === null ? 'null' : Array.isArray(value) ? 'array' : typeof value;
+  const okType = (t: string) =>
+    t === actual ||
+    (t === 'integer' && Number.isInteger(value)) ||
+    (t === 'number' && actual === 'number');
+  if (types.length && !types.some(okType)) return [`${path}: ${actual} is not ${types.join('|')}`];
+  const out: string[] = [];
+  if (actual === 'object') {
+    const obj = value as Record<string, unknown>;
+    for (const k of schema.required ?? []) if (!(k in obj)) out.push(`${path}.${k}: missing`);
+    for (const [k, sub] of Object.entries(schema.properties ?? {}))
+      if (k in obj) out.push(...violations(obj[k], sub, `${path}.${k}`));
+  }
+  if (actual === 'array' && schema.items)
+    (value as unknown[]).forEach((v, i) =>
+      out.push(...violations(v, schema.items!, `${path}[${i}]`)),
+    );
+  return out;
+}
 
 describe.skipIf(!process.env.DATABASE_URL)('orders read and cancel (database)', () => {
   let db: Db;
@@ -119,6 +160,27 @@ describe.skipIf(!process.env.DATABASE_URL)('orders read and cancel (database)', 
     expect(one.timeline.map((t: { status: string }) => t.status)).toContain('paid');
     expect(JSON.stringify(one)).not.toContain('demo.orders@example.com');
     expect((await getRoute(req(keys.support), params('ORD-999999'))).status).toBe(404);
+  });
+
+  it('responses match the Order schema, including null print job, shipment and invoice', async () => {
+    const o = await order(true);
+    const unprinted = await (await getRoute(req(keys.support), params(o.number))).json();
+    expect(unprinted).toMatchObject({ printJob: null, shipment: null, invoiceNumber: null });
+    const order_ = spec.components.schemas.Order!;
+    expect(violations(unprinted, order_)).toEqual([]);
+    const cancelled = await (await cancel(o.number)).json();
+    expect(violations(cancelled, order_)).toEqual([]);
+    expect(cancelled.timeline.map((x: { status: string }) => x.status)).toContain('cancelled');
+
+    const p = await order(true);
+    await db.printJob.create({ data: { orderId: p.id, costPaise: 100, partnerRef: 'pj_c' } });
+    await db.shipment.create({ data: { orderId: p.id, zone: 'same_city', costPaise: 50 } });
+    const full = await (await getRoute(req(keys.support), params(p.number))).json();
+    expect(full.printJob).toMatchObject({ partnerRef: 'pj_c', status: 'received', attempt: 1 });
+    expect(full.shipment).toMatchObject({ awb: null, sequence: 1 });
+    expect(violations(full, order_)).toEqual([]);
+    for (const row of await (await listRoute(req(keys.support))).json())
+      expect(violations(row, order_), row.number).toEqual([]);
   });
 
   it('cancels a paid order before printing: full refund record and events', async () => {
