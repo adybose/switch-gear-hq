@@ -126,6 +126,27 @@ describe.skipIf(!process.env.DATABASE_URL)('order tracking and contact form (dat
     expect(found!.awb).toBe('SF123456');
   });
 
+  it('shows a failed payment, which cancels the order without an order.cancelled event', async () => {
+    const number = await place();
+    await db.$transaction(async (tx) => {
+      await tx.order.update({ where: { number }, data: { status: 'cancelled' } });
+      await recordEvent(tx, {
+        type: 'payment.failed',
+        entityType: 'order',
+        entityId: number,
+        payload: {
+          orderNumber: number,
+          gatewayRef: 'pm_1',
+          amountPaise: 59900,
+          reason: 'declined',
+        },
+      });
+    });
+    const found = await trackOrder(db, number, customer.email);
+    expect(found!.status).toBe('cancelled');
+    expect(found!.timeline.map((t) => t.label)).toEqual(['Order placed', 'Payment failed']);
+  });
+
   it('creates a ticket linked to the order and writes ticket.created', async () => {
     const number = await place();
     const res = await postTicket(

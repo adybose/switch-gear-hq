@@ -4,6 +4,7 @@ import type { PrismaClient } from '../generated/prisma/client';
 const TIMELINE_LABELS: Record<string, string> = {
   'order.placed': 'Order placed',
   'order.paid': 'Payment received',
+  'payment.failed': 'Payment failed',
   'order.cancelled': 'Order cancelled',
   'shipment.delivered': 'Delivered',
   'shipment.failed': 'Delivery attempt failed',
