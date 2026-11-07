@@ -41,6 +41,11 @@ async function main(): Promise<void> {
     founderId: sw.founderId,
     founderName: sw.founderName,
     rooms,
+    refreshRooms: async () => {
+      const fresh = resolveRooms(await switchHttp.listRooms(), sw.roomOverrides);
+      log(`rooms looked up again: ${JSON.stringify(fresh)}`);
+      return fresh;
+    },
     log,
   });
 

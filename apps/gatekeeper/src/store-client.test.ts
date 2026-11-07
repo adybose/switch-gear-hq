@@ -72,6 +72,15 @@ describe('store client', () => {
   });
 });
 
+describe('store client outages', () => {
+  it('throws on a 5xx decision, so the founder message is retried rather than answered', async () => {
+    const { client } = fakeStore(() => Response.json({ error: 'internal' }, { status: 503 }));
+    await expect(client.decide({ decision: 'approve', approvalId: 'APR-1' })).rejects.toThrow(
+      '503',
+    );
+  });
+});
+
 describe('state file', () => {
   it('keeps the cursor and the connection id across restarts', () => {
     const path = join(mkdtempSync(join(tmpdir(), 'gk-')), 'nested', 'state.json');

@@ -76,7 +76,10 @@ describe('Switch connection', () => {
     await bridge.stop();
   });
 
-  async function connect(position: ConnectionPosition) {
+  async function connect(
+    position: ConnectionPosition,
+    onMessage?: (m: AddressedMessage) => Promise<void>,
+  ) {
     bridge = fakeBridge();
     const base = await bridge.start();
     const handled: AddressedMessage[] = [];
@@ -88,7 +91,8 @@ describe('Switch connection', () => {
       roomId: 'r-approvals',
       position,
       backoffMs: [10],
-      onMessage: async (m) => void handled.push(m),
+      retryMs: [20],
+      onMessage: onMessage ?? (async (m) => void handled.push(m)),
       onPosition: (p) => positions.push(p),
     });
     return { handled, positions };
@@ -147,6 +151,55 @@ describe('Switch connection', () => {
     send(open.socket, { event: 'ping', data: {} });
     await until(() => open.received.length === 2);
     expect(open.received[1]).toEqual({ type: 'pong', cursor: 12 });
+  });
+
+  it('retries a failed message before anything after it, without moving the cursor, and keeps answering pings', async () => {
+    let failures = 2;
+    const done: string[] = [];
+    const { positions } = await connect(
+      { connectionId: 'conn-6', generation: 1, cursor: 10 },
+      async (m) => {
+        if (m.messageId === 'm11' && failures > 0) {
+          failures -= 1;
+          throw new Error('store unreachable');
+        }
+        done.push(m.messageId);
+      },
+    );
+    const open = await bridge.nextOpen(1);
+    send(open.socket, { event: 'connection_state', data: { generation: 2, cursor: 10 } });
+    send(open.socket, msg(11, { addressed: true, body: 'approve APR-7', message_id: 'm11' }));
+    send(open.socket, msg(12, { addressed: true, body: 'approve APR-8', message_id: 'm12' }));
+    send(open.socket, { event: 'ping', data: {} });
+    await until(() => open.received.length === 1);
+    // Answered while m11 is still failing: the cursor has not moved past it.
+    expect(open.received[0]).toEqual({ type: 'pong', cursor: 10 });
+    expect(done).toEqual([]);
+
+    await until(() => positions.at(-1)?.cursor === 12);
+    expect(done).toEqual(['m11', 'm12']);
+  });
+
+  it('does not run a queued message twice when a reconnect replays it', async () => {
+    let release: () => void = () => {};
+    const gate = new Promise<void>((r) => (release = r));
+    const seen: string[] = [];
+    await connect({ connectionId: 'conn-7', generation: 1, cursor: 10 }, async (m) => {
+      seen.push(m.messageId);
+      await gate;
+    });
+    const first = await bridge.nextOpen(1);
+    send(first.socket, { event: 'connection_state', data: { generation: 2, cursor: 10 } });
+    send(first.socket, msg(11, { addressed: true, body: 'approve APR-7', message_id: 'm11' }));
+    await until(() => seen.length === 1);
+    first.socket.terminate();
+    const second = await bridge.nextOpen(2);
+    expect(second.url.searchParams.get('start_from')).toBe('10');
+    send(second.socket, { event: 'connection_state', data: { generation: 3, cursor: 10 } });
+    send(second.socket, msg(11, { addressed: true, body: 'approve APR-7', message_id: 'm11' }));
+    release();
+    await new Promise((r) => setTimeout(r, 50));
+    expect(seen).toEqual(['m11']);
   });
 
   it('resumes after a drop with the same connection id, its cursor and generation', async () => {

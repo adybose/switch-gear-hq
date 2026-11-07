@@ -81,6 +81,9 @@ export function createStoreClient(options: {
           signal: AbortSignal.timeout(30_000),
         },
       );
+      // A 5xx (like a network error, which throws) leaves the outcome unknown: throw so the
+      // caller retries. The store runs a decision at most once, so a retry is safe.
+      if (res.status >= 500) throw new StoreError(`POST decision → ${res.status}`, res.status);
       const json: unknown = await res.json().catch(() => null);
       if (res.ok) return { ok: true, approval: toSummary(json) };
       // Error schema: { error: <code>, details? }.

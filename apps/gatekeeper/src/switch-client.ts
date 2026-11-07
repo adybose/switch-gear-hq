@@ -6,7 +6,8 @@
 // - WebSocket: one connection with a stable connection id, claiming one room (#approvals) on
 //   open. Every ping is answered at once with the cursor; drops are resumed from the cursor and
 //   generation; `taken_over` is final. Only `message` events with `addressed: true` reach the
-//   handler.
+//   handler. A handler that throws is retried, and the cursor does not move past it until it
+//   succeeds, so a restart replays the message rather than dropping it.
 
 import WebSocket from 'ws';
 
@@ -112,6 +113,8 @@ export interface ConnectionOptions {
   log?: (line: string) => void;
   /** Reconnect delays in ms; the last one repeats. */
   backoffMs?: number[];
+  /** Delays before retrying a message whose handler failed; the last one repeats. */
+  retryMs?: number[];
   createSocket?: (url: string, headers: Record<string, string>) => WebSocket;
 }
 
@@ -144,6 +147,8 @@ export function openConnection(options: ConnectionOptions): SwitchConnection {
   let timer: NodeJS.Timeout | null = null;
   // Events are handled one at a time, in order, behind the pings.
   let queue: Promise<void> = Promise.resolve();
+  let enqueuedUpTo = -1;
+  const retry = options.retryMs ?? [1000, 2000, 5000, 10_000, 30_000];
   let markReady: () => void = () => {};
   const ready = new Promise<void>((resolve) => (markReady = resolve));
 
@@ -220,21 +225,33 @@ export function openConnection(options: ConnectionOptions): SwitchConnection {
       }
       case 'message': {
         const seq = typeof frame.id === 'number' ? frame.id : null;
+        if (!claim(seq)) return;
         const data = frame.data ?? {};
         const payload = (data.payload ?? {}) as Record<string, unknown>;
         queue = queue.then(async () => {
           if (payload.addressed === true && typeof payload.body === 'string') {
-            try {
-              await options.onMessage({
-                roomId: String(data.room_id ?? ''),
-                sender: String(payload.sender ?? ''),
-                senderName: String(payload.sender_name ?? ''),
-                messageId: String(payload.message_id ?? ''),
-                threadId: typeof payload.thread_id === 'string' ? payload.thread_id : null,
-                body: payload.body,
-              });
-            } catch (err) {
-              log(`switch message handler failed: ${(err as Error).message}`);
+            const message: AddressedMessage = {
+              roomId: String(data.room_id ?? ''),
+              sender: String(payload.sender ?? ''),
+              senderName: String(payload.sender_name ?? ''),
+              messageId: String(payload.message_id ?? ''),
+              threadId: typeof payload.thread_id === 'string' ? payload.thread_id : null,
+              body: payload.body,
+            };
+            // Retry until it works. The cursor (and every later event) waits behind it, so a
+            // restart replays it; pings are answered outside this queue meanwhile.
+            for (let failures = 0; ; failures += 1) {
+              if (closedByUs || stopped) return;
+              try {
+                await options.onMessage(message);
+                break;
+              } catch (err) {
+                const delay = retry[Math.min(failures, retry.length - 1)]!;
+                log(
+                  `switch message ${message.messageId} failed, retrying in ${delay} ms: ${(err as Error).message}`,
+                );
+                await new Promise((resolve) => setTimeout(resolve, delay));
+              }
             }
           }
           advance(seq);
@@ -245,9 +262,21 @@ export function openConnection(options: ConnectionOptions): SwitchConnection {
         // command, room_join, subscription_changed, room_released: nothing to act on, but a
         // domain event still moves the cursor.
         const seq = typeof frame.id === 'number' ? frame.id : null;
-        if (seq !== null) queue = queue.then(() => advance(seq));
+        if (seq !== null && claim(seq)) queue = queue.then(() => advance(seq));
       }
     }
+  }
+
+  /**
+   * True the first time an event is seen. After a reconnect the server replays everything past
+   * the cursor, which can include events still waiting in the queue; those are not run twice.
+   */
+  function claim(seq: number | null): boolean {
+    if (seq === null) return true;
+    const seen = Math.max(enqueuedUpTo, position.cursor ?? -1);
+    if (seq <= seen) return false;
+    enqueuedUpTo = seq;
+    return true;
   }
 
   function advance(seq: number | null): void {

@@ -1,8 +1,8 @@
 import type { BusinessClock, StoreEvent } from '@switch-gear/shared';
 import { describe, expect, it } from 'vitest';
 import type { Decision } from './approvals';
-import { Gatekeeper, resolveRooms } from './gatekeeper';
-import { initialState, memoryState } from './state';
+import { Gatekeeper, MissingRoomError, resolveRooms } from './gatekeeper';
+import { initialState, memoryState, type StateStore } from './state';
 import type { ApprovalSummary, DecisionOutcome, StoreClient } from './store-client';
 import type { AddressedMessage, SwitchHttp } from './switch-client';
 
@@ -44,11 +44,14 @@ function setup(
     failPostTo?: string;
     now?: Date;
     rooms?: Record<string, string>;
+    refreshRooms?: () => Record<string, string>;
+    state?: StateStore;
   } = {},
 ) {
   const posts: { room: string; text: string }[] = [];
   const decisions: Decision[] = [];
   let failPostTo = opts.failPostTo;
+  let decideFailures = 0;
   const events = opts.events ?? [];
   let decideOutcome: DecisionOutcome = {
     ok: true,
@@ -65,6 +68,10 @@ function setup(
       return approvals[id] ?? null;
     },
     async decide(decision) {
+      if (decideFailures > 0) {
+        decideFailures -= 1;
+        throw new Error('store unreachable');
+      }
       decisions.push(decision);
       return decideOutcome;
     },
@@ -84,7 +91,7 @@ function setup(
     read: async () => ({ now, speed: 1, source: 'sim' }),
     now: async () => now,
   };
-  const state = memoryState(initialState());
+  const state = opts.state ?? memoryState(initialState());
   const gatekeeper = new Gatekeeper({
     store,
     switchHttp,
@@ -93,6 +100,7 @@ function setup(
     founderId: FOUNDER,
     founderName: 'founder',
     rooms: opts.rooms ?? ROOMS,
+    refreshRooms: opts.refreshRooms ? async () => opts.refreshRooms!() : undefined,
     log: () => {},
   });
   return {
@@ -103,6 +111,7 @@ function setup(
     setNow: (d: Date) => (now = d),
     healSwitch: () => (failPostTo = undefined),
     setOutcome: (o: DecisionOutcome) => (decideOutcome = o),
+    failDecide: (times: number) => (decideFailures = times),
   };
 }
 
@@ -169,6 +178,15 @@ describe('event delivery', () => {
     t.healSwitch();
     expect(await t.gatekeeper.pollEvents()).toBe(2);
     expect(t.state.get().eventsAfter).toBe(2);
+    // The posts that went out before the failure are not repeated.
+    expect(t.posts.map((p) => p.room)).toEqual([
+      'r-events',
+      'r-fulfilment',
+      'r-finance',
+      'r-events',
+      'r-fulfilment',
+      'r-finance',
+    ]);
     // The next poll has nothing new.
     expect(await t.gatekeeper.pollEvents()).toBe(0);
   });
@@ -226,25 +244,37 @@ describe('event delivery', () => {
     ]);
   });
 
-  it('skips a room it has not been added to, and still moves on', async () => {
-    const rooms = Object.fromEntries(Object.entries(ROOMS).filter(([k]) => k !== 'marketing'));
-    const t = setup({
-      rooms,
-      events: [
-        ev(1, 'campaign.result', {
-          campaignId: 'C1',
-          name: 'Diwali',
-          channel: 'google',
-          spentPaise: 100,
-          clicks: 1,
-          orders: 0,
-          revenuePaise: 0,
-        }),
-      ],
-    });
-    await t.gatekeeper.pollEvents();
-    expect(t.posts.map((p) => p.room)).toEqual(['r-events', 'r-finance']);
-    expect(t.state.get().eventsAfter).toBe(1);
+  it('holds an event for a room it is not in yet, and delivers it once the room is added', async () => {
+    const withoutFulfilment = Object.fromEntries(
+      Object.entries(ROOMS).filter(([k]) => k !== 'fulfilment'),
+    );
+    let lookup: Record<string, string> = withoutFulfilment;
+    const t = setup({ rooms: withoutFulfilment, refreshRooms: () => lookup, events: [paid(1)] });
+
+    await expect(t.gatekeeper.pollEvents()).rejects.toBeInstanceOf(MissingRoomError);
+    await expect(t.gatekeeper.pollEvents()).rejects.toBeInstanceOf(MissingRoomError);
+    expect(t.state.get().eventsAfter).toBe(0);
+    expect(t.posts.map((p) => p.room)).toEqual(['r-events']);
+
+    lookup = ROOMS; // Gatekeeper is added to #fulfilment.
+    expect(await t.gatekeeper.pollEvents()).toBe(1);
+    expect(t.posts.map((p) => p.room)).toEqual(['r-events', 'r-fulfilment', 'r-finance']);
+    expect(t.state.get()).toMatchObject({ eventsAfter: 1, delivering: null });
+  });
+
+  it('delivers a held event after a restart with the room configured', async () => {
+    const withoutFulfilment = Object.fromEntries(
+      Object.entries(ROOMS).filter(([k]) => k !== 'fulfilment'),
+    );
+    const first = setup({ rooms: withoutFulfilment, events: [paid(1)] });
+    await expect(first.gatekeeper.pollEvents()).rejects.toBeInstanceOf(MissingRoomError);
+    expect(first.state.get().eventsAfter).toBe(0);
+
+    const second = setup({ state: first.state, events: [paid(1)] });
+    expect(await second.gatekeeper.pollEvents()).toBe(1);
+    // #events already had it before the restart.
+    expect(second.posts.map((p) => p.room)).toEqual(['r-fulfilment', 'r-finance']);
+    expect(second.state.get().eventsAfter).toBe(1);
   });
 });
 
@@ -303,6 +333,41 @@ describe('founder decisions', () => {
     ]);
   });
 
+  it('retries a decision the store could not take, then replies once', async () => {
+    const t = setup();
+    const replies: string[] = [];
+    const reply = async (text: string) => void replies.push(text);
+    t.failDecide(1);
+    await expect(t.gatekeeper.handleMessage(message(), reply)).rejects.toThrow('store unreachable');
+    expect(replies).toEqual([]);
+    await t.gatekeeper.handleMessage(message(), reply);
+    expect(t.decisions).toEqual([{ decision: 'approve', approvalId: 'APR-7' }]);
+    expect(replies).toEqual(['APR-7 approved. The store ran `refund.create`.']);
+  });
+
+  it('resends only the reply when the decision went through but the reply failed', async () => {
+    const t = setup();
+    const sent: string[] = [];
+    let replyFails = true;
+    const reply = async (text: string) => {
+      if (replyFails) throw new Error('switch down');
+      sent.push(text);
+    };
+    await expect(t.gatekeeper.handleMessage(message(), reply)).rejects.toThrow('switch down');
+    replyFails = false;
+    await t.gatekeeper.handleMessage(message(), reply);
+    expect(t.decisions).toHaveLength(1);
+    expect(sent).toEqual(['APR-7 approved. The store ran `refund.create`.']);
+  });
+
+  it('after a restart, a replayed decision reports the request as it now stands', async () => {
+    const t = setup();
+    const replies: string[] = [];
+    t.setOutcome({ ok: false, status: 409, code: 'already_decided' });
+    await t.gatekeeper.handleMessage(message(), async (text) => void replies.push(text));
+    expect(replies).toEqual(['APR-7 is already approved; nothing changed.']);
+  });
+
   it('relays store refusals', async () => {
     const t = setup();
     const replies: string[] = [];
@@ -314,7 +379,7 @@ describe('founder decisions', () => {
     t.setOutcome({ ok: false, status: 409, code: 'action_not_supported' });
     await t.gatekeeper.handleMessage(message(), reply);
     expect(replies).toEqual([
-      'APR-7 was already decided; nothing changed.',
+      'APR-7 is already approved; nothing changed.',
       "I can't find APR-7. Check the number.",
       expect.stringContaining('stays pending'),
     ]);
@@ -346,5 +411,26 @@ describe('timers', () => {
     t.setNow(new Date('2026-11-09T19:00:00Z')); // Tuesday: a day, not a week
     await t.gatekeeper.tickTimers();
     expect(t.posts.slice(2).map((p) => p.room)).toEqual(['r-hq']);
+  });
+
+  it('keeps a timer due until its room exists, and fires it once the room is added', async () => {
+    const withoutHq = Object.fromEntries(Object.entries(ROOMS).filter(([k]) => k !== 'hq'));
+    let lookup: Record<string, string> = withoutHq;
+    const t = setup({
+      rooms: withoutHq,
+      refreshRooms: () => lookup,
+      now: new Date('2026-11-07T06:00:00Z'),
+    });
+    await t.gatekeeper.tickTimers();
+    t.setNow(new Date('2026-11-07T19:00:00Z')); // next business day, same week
+    await expect(t.gatekeeper.tickTimers()).rejects.toBeInstanceOf(MissingRoomError);
+    expect(t.state.get().businessDate).toBe('2026-11-07');
+
+    lookup = ROOMS;
+    await t.gatekeeper.tickTimers();
+    expect(t.posts).toEqual([
+      { room: 'r-hq', text: expect.stringContaining('business day 2026-11-07 has ended') },
+    ]);
+    expect(t.state.get().businessDate).toBe('2026-11-08');
   });
 });

@@ -8,6 +8,8 @@ import { dirname } from 'node:path';
 export interface GatekeeperState {
   /** Highest store event seq already posted. */
   eventsAfter: number;
+  /** The event being posted and the posts already made for it, so a retry skips them. */
+  delivering: { seq: number; done: string[] } | null;
   switch: { connectionId: string; generation: number | null; cursor: number | null };
   /** Business date (IST, YYYY-MM-DD) the daily timer last saw. */
   businessDate: string | null;
@@ -18,6 +20,7 @@ export interface GatekeeperState {
 export function initialState(): GatekeeperState {
   return {
     eventsAfter: 0,
+    delivering: null,
     switch: { connectionId: randomUUID(), generation: null, cursor: null },
     businessDate: null,
     businessWeek: null,
