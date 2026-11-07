@@ -81,6 +81,8 @@ function details(event: StoreEvent): string[] {
       ];
     case 'shipment.rto':
       return [event.payload.orderNumber, `AWB ${event.payload.awb}`, event.payload.reason];
+    case 'ticket.replied':
+      return [event.payload.ticketNumber, event.payload.status];
     case 'ticket.created':
       return [
         event.payload.ticketNumber,

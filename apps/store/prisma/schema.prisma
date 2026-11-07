@@ -274,20 +274,20 @@ model OrderItem {
 // ---------- payments and refunds ----------
 
 model Payment {
-  id          String        @id @default(cuid())
-  orderId     String
-  order       Order         @relation(fields: [orderId], references: [id])
-  gatewayRef  String        @unique
-  status      PaymentStatus @default(created)
-  amountPaise Int
+  id            String        @id @default(cuid())
+  orderId       String
+  order         Order         @relation(fields: [orderId], references: [id])
+  gatewayRef    String        @unique
+  status        PaymentStatus @default(created)
+  amountPaise   Int
   // Gateway fee (2%) and the 18% GST on it, as reported by the gateway on capture.
   feePaise      Int           @default(0)
   feeGstPaise   Int           @default(0)
   failureReason String?
   settlementRef String?
-  createdAt   DateTime      @default(now())
-  capturedAt  DateTime?
-  settledAt   DateTime?
+  createdAt     DateTime      @default(now())
+  capturedAt    DateTime?
+  settledAt     DateTime?
 
   @@index([orderId])
 }
@@ -311,18 +311,18 @@ model Refund {
 // ---------- fulfilment ----------
 
 model PrintJob {
-  id         String         @id @default(cuid())
-  orderId    String
-  order      Order          @relation(fields: [orderId], references: [id])
-  partnerRef String?        @unique
-  status     PrintJobStatus @default(received)
-  attempt    Int            @default(1)
-  costPaise  Int
-  acceptedAt DateTime       @default(now())
-  dueAt      DateTime       @default(dbgenerated("(CURRENT_TIMESTAMP + '2 days'::interval)"))
+  id             String         @id @default(cuid())
+  orderId        String
+  order          Order          @relation(fields: [orderId], references: [id])
+  partnerRef     String?        @unique
+  status         PrintJobStatus @default(received)
+  attempt        Int            @default(1)
+  costPaise      Int
+  acceptedAt     DateTime       @default(now())
+  dueAt          DateTime       @default(dbgenerated("(CURRENT_TIMESTAMP + '2 days'::interval)"))
   lateReportedAt DateTime?
-  createdAt  DateTime       @default(now())
-  updatedAt  DateTime       @updatedAt
+  createdAt      DateTime       @default(now())
+  updatedAt      DateTime       @updatedAt
 
   @@unique([orderId, attempt])
   @@index([orderId])
@@ -330,25 +330,25 @@ model PrintJob {
 }
 
 model Shipment {
-  id        String         @id @default(cuid())
-  orderId   String
-  order     Order          @relation(fields: [orderId], references: [id])
-  awb       String?        @unique
-  status    ShipmentStatus @default(pickup_scheduled)
-  zone      ShippingZone
-  attempts  Int            @default(0)
-  sequence  Int            @default(1)
-  reshipOfId String?       @unique
-  reshipOf  Shipment?      @relation("ReshipChain", fields: [reshipOfId], references: [id])
-  reship    Shipment?      @relation("ReshipChain")
-  approvalId String?
-  approval  ApprovalRequest? @relation(fields: [approvalId], references: [id])
-  bookedAt  DateTime       @default(now())
+  id                  String           @id @default(cuid())
+  orderId             String
+  order               Order            @relation(fields: [orderId], references: [id])
+  awb                 String?          @unique
+  status              ShipmentStatus   @default(pickup_scheduled)
+  zone                ShippingZone
+  attempts            Int              @default(0)
+  sequence            Int              @default(1)
+  reshipOfId          String?          @unique
+  reshipOf            Shipment?        @relation("ReshipChain", fields: [reshipOfId], references: [id])
+  reship              Shipment?        @relation("ReshipChain")
+  approvalId          String?
+  approval            ApprovalRequest? @relation(fields: [approvalId], references: [id])
+  bookedAt            DateTime         @default(now())
   estimatedDeliveryAt DateTime?
-  deliveredAt DateTime?
-  costPaise Int
-  createdAt DateTime       @default(now())
-  updatedAt DateTime       @updatedAt
+  deliveredAt         DateTime?
+  costPaise           Int
+  createdAt           DateTime         @default(now())
+  updatedAt           DateTime         @updatedAt
 
   @@unique([orderId, sequence])
   @@index([orderId])
@@ -467,7 +467,22 @@ model Ticket {
   createdAt  DateTime     @default(now())
   updatedAt  DateTime     @updatedAt
 
+  emails EmailOutbox[]
+
   @@index([status])
+}
+
+/// Simulated outgoing email only; no external mail is sent.
+model EmailOutbox {
+  id        String   @id @default(cuid())
+  ticketId  String
+  ticket    Ticket   @relation(fields: [ticketId], references: [id])
+  to        String
+  subject   String
+  body      String
+  createdAt DateTime @default(now())
+
+  @@index([ticketId])
 }
 
 // ---------- platform ----------

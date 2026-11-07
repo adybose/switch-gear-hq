@@ -364,14 +364,26 @@ paths:
   /tickets/{number}:
     get:
       tags: [support]
+      summary: Ticket detail (support, hq or founder; tickets:read)
       parameters: [ { name: number, in: path, required: true, schema: { type: string } } ]
-      responses: { '200': { description: Ticket, content: { application/json: { schema: { $ref: '#/components/schemas/Ticket' } } } } }
+      responses:
+        '200': { description: Ticket, content: { application/json: { schema: { $ref: '#/components/schemas/Ticket' } } } }
+        '401': { description: Missing, invalid or revoked API key, content: { application/json: { schema: { $ref: '#/components/schemas/Error' } } } }
+        '403': { $ref: '#/components/responses/Forbidden' }
+        '404': { $ref: '#/components/responses/NotFound' }
   /tickets/{number}/reply:
     post:
       tags: [support]
+      summary: Reply to a ticket (support only; ticket_replies:write)
+      description: Appends a support message and queues a simulated email in EmailOutbox atomically with a ticket.replied event. close=true closes the ticket; otherwise it becomes waiting, including previously closed tickets. Concurrent replies are serialized per ticket. No external email is sent; the outbox page is a follow-up.
       parameters: [ { name: number, in: path, required: true, schema: { type: string } } ]
-      requestBody: { required: true, content: { application/json: { schema: { type: object, required: [message], properties: { message: { type: string }, close: { type: boolean, default: false } } } } } }
-      responses: { '200': { description: Reply sent to the in-app email outbox } }
+      requestBody: { required: true, content: { application/json: { schema: { type: object, required: [message], properties: { message: { type: string, minLength: 1, maxLength: 2000, description: Trimmed; must not be blank }, close: { type: boolean, default: false } } } } } }
+      responses:
+        '200': { description: Reply queued in the in-app email outbox; updated ticket returned, content: { application/json: { schema: { $ref: '#/components/schemas/Ticket' } } } }
+        '401': { description: Missing, invalid or revoked API key, content: { application/json: { schema: { $ref: '#/components/schemas/Error' } } } }
+        '403': { $ref: '#/components/responses/Forbidden' }
+        '404': { $ref: '#/components/responses/NotFound' }
+        '422': { $ref: '#/components/responses/Invalid' }
   /returns:
     post:
       tags: [support]

@@ -48,6 +48,7 @@ export const ROUTES: Record<EventType, Route | null> = {
   'shipment.delivered': { room: 'support', mention: 'support', also: ['finance'] },
   'shipment.failed': { room: 'fulfilment', mention: 'fulfilment', also: ['support', 'finance'] },
   'shipment.rto': { room: 'fulfilment', mention: 'fulfilment', also: ['support', 'finance'] },
+  'ticket.replied': null, // Audit only; a support reply must not wake support again.
   'ticket.created': { room: 'support', mention: 'support', also: [] },
   'refund.requested': { room: 'finance', mention: 'finance', also: [] },
   'invoice.received': { room: 'finance', mention: 'finance', also: ['fulfilment'] },

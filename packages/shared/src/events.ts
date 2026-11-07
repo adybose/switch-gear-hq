@@ -85,6 +85,10 @@ export interface EventPayloads {
     awb: string;
     reason: string;
   };
+  'ticket.replied': {
+    ticketNumber: string;
+    status: 'waiting' | 'closed';
+  };
   'ticket.created': {
     ticketNumber: string;
     orderNumber: string | null;
@@ -178,6 +182,7 @@ export const EVENT_TYPES = [
   'shipment.failed',
   'shipment.rto',
   'ticket.created',
+  'ticket.replied',
   'refund.requested',
   'invoice.received',
   'settlement.received',

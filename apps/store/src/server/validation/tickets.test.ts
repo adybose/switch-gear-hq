@@ -1,7 +1,24 @@
 import { describe, expect, it } from 'vitest';
-import { ticketInput, ticketListQuery, trackQuery } from './tickets';
+import { ticketInput, ticketListQuery, ticketReplyInput, trackQuery } from './tickets';
 
 describe('track and ticket validation', () => {
+  it('defaults replies to leaving the ticket waiting and validates the message and close flag', () => {
+    expect(ticketReplyInput.parse({ message: ' Help ' })).toEqual({
+      message: 'Help',
+      close: false,
+    });
+    expect(ticketReplyInput.parse({ message: 'x'.repeat(2000), close: true }).close).toBe(true);
+    for (const input of [
+      {},
+      { message: '' },
+      { message: ' ' },
+      { message: 1 },
+      { message: 'x'.repeat(2001) },
+      { message: 'Hi', close: 'true' },
+    ]) {
+      expect(ticketReplyInput.safeParse(input).success).toBe(false);
+    }
+  });
   it('requires a valid email and an order number to track', () => {
     expect(trackQuery.safeParse({ number: 'ORD-1001', email: 'a@example.com' }).success).toBe(true);
     expect(trackQuery.safeParse({ number: 'ORD-1001', email: 'nope' }).success).toBe(false);

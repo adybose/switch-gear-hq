@@ -41,7 +41,7 @@ How to use this file:
 | T-26 | Switch template and onboarding | founder | T-24, T-25 | MVP | todo |
 | T-27 | Scenario buttons | builder | T-15, T-19 | MVP (3 of 6) | todo |
 | T-28 | README and demo script | founder | T-26 | MVP | done |
-| T-29 | Ticket detail, replies, close and email outbox | builder | T-22 | MVP follow-up | todo |
+| T-29 | Ticket detail, replies, close and email outbox | builder | T-22 | MVP follow-up | doing |
 | T-30 | Ticket simulator | builder | T-15, T-22 | MVP follow-up | todo |
 
 Reviewer (`@reviewer`) reviews every builder PR with the `review-pr` skill.
@@ -209,8 +209,12 @@ Reviewer (`@reviewer`) reviews every builder PR with the `review-pr` skill.
 
 ### T-29 Ticket detail, replies, close and email outbox (follow-up)
 
-- Deferred from T-22 by founder's minimum scope; not implemented in T-22.
-- AC: ticket detail/reply/close endpoints; replies go to an in-app email outbox page.
+- Founder-scoped backend delivery (2026-11-08): GET /tickets/{number} and POST
+  /tickets/{number}/reply, including optional close, department scopes and tests.
+- Backend: replies append to the thread, set waiting/closed and queue a simulated email
+  with a ticket.replied event in one transaction; concurrent replies preserve every message.
+- Remaining AC: an in-app email outbox page (deferred from this endpoint-only request).
+  T-29 stays doing until that page ships; this PR delivers the backend portion.
 
 ### T-30 Ticket simulator (follow-up)
 
