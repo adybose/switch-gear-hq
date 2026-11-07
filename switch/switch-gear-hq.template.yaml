@@ -62,9 +62,9 @@ resources:
     display_name: Chief of Staff
     description: Runs the founder's office in hq and approvals; daily company report; adds context to approval requests.
     provider: claude
-    model: "{claude_model}"
-    machine: "{machine}"
-    directory: "{repo_dir}/agents/chief-of-staff"
+    model: '{claude_model}'
+    machine: '{machine}'
+    directory: '{repo_dir}/agents/chief-of-staff'
     instructions: You are the Chief of Staff for Switch Gear HQ. Your role, limits and tools are in AGENTS.md in your working folder; read it and the repo's root AGENTS.md before anything else. Use the sg CLI with the key in your folder's .env (read-only across departments).
 
   finance:
@@ -73,9 +73,9 @@ resources:
     display_name: Finance Controller
     description: Refunds, invoices, payouts, settlements, GST and the P&L, in finance.
     provider: claude
-    model: "{claude_model}"
-    machine: "{machine}"
-    directory: "{repo_dir}/agents/finance"
+    model: '{claude_model}'
+    machine: '{machine}'
+    directory: '{repo_dir}/agents/finance'
     instructions: You are the Finance Controller for Switch Gear HQ. Your role, limits and tools are in AGENTS.md in your working folder; read it and the repo's root AGENTS.md before anything else. Use the sg CLI with the finance key in your folder's .env.
 
   marketing:
@@ -84,9 +84,9 @@ resources:
     display_name: Marketing Lead
     description: Campaigns, posts, discount codes and ad budget, in marketing.
     provider: claude
-    model: "{claude_model}"
-    machine: "{machine}"
-    directory: "{repo_dir}/agents/marketing"
+    model: '{claude_model}'
+    machine: '{machine}'
+    directory: '{repo_dir}/agents/marketing'
     instructions: You are the Marketing Lead for Switch Gear HQ. Your role, limits and tools are in AGENTS.md in your working folder; read it and the repo's root AGENTS.md before anything else. Use the sg CLI with the marketing key in your folder's .env.
 
   fulfilment:
@@ -95,8 +95,8 @@ resources:
     display_name: Fulfilment Lead
     description: Print jobs, shipments, misprints and failed deliveries, in fulfilment.
     provider: codex
-    machine: "{machine}"
-    directory: "{repo_dir}/agents/fulfilment"
+    machine: '{machine}'
+    directory: '{repo_dir}/agents/fulfilment'
     instructions: You are the Fulfilment Lead for Switch Gear HQ. Your role, limits and tools are in AGENTS.md in your working folder; read it and the repo's root AGENTS.md before anything else. Use the sg CLI with the fulfilment key in your folder's .env.
 
   support:
@@ -105,8 +105,8 @@ resources:
     display_name: Support Agent
     description: Customer tickets, returns, exchanges and order tracking, in support.
     provider: codex
-    machine: "{machine}"
-    directory: "{repo_dir}/agents/support"
+    machine: '{machine}'
+    directory: '{repo_dir}/agents/support'
     instructions: You are the Support Agent for Switch Gear HQ. Your role, limits and tools are in AGENTS.md in your working folder; read it and the repo's root AGENTS.md before anything else. Use the sg CLI with the support key in your folder's .env.
 
   researcher:
@@ -115,9 +115,9 @@ resources:
     display_name: Researcher
     description: Researches markets, partners, tools and the Switch Gear codebase, and reports back briefly with sources. Read-only.
     provider: claude
-    machine: "{machine}"
-    directory: "{repo_dir}/agents/researcher"
-    advanced_config: {disallowedTools: [Write, Edit, NotebookEdit]}
+    machine: '{machine}'
+    directory: '{repo_dir}/agents/researcher'
+    advanced_config: { disallowedTools: [Write, Edit, NotebookEdit] }
     allow_existing: true
     instructions: You are the Researcher for Switch Gear HQ. Your role is in AGENTS.md in your working folder; read it and the repo's root AGENTS.md before anything else. You never change files.
 
@@ -127,8 +127,8 @@ resources:
     display_name: Builder
     description: Switch Gear engineering on Claude Code. One branch and PR per task; never merges to main.
     provider: claude
-    machine: "{machine}"
-    directory: "{worktrees_dir}/builder"
+    machine: '{machine}'
+    directory: '{worktrees_dir}/builder'
     allow_existing: true
     instructions: You are the Builder for Switch Gear HQ. Your role file is CLAUDE.local.md in your worktree (linked from agents/external/builder/AGENTS.md); read it and the repo's root AGENTS.md before anything else.
 
@@ -138,9 +138,9 @@ resources:
     display_name: Builder (Codex)
     description: Second Switch Gear builder, on Codex, working in parallel with builder on the tasks the founder names.
     provider: codex
-    machine: "{machine}"
-    directory: "{worktrees_dir}/builder-codex"
-    advanced_config: {effort: high}
+    machine: '{machine}'
+    directory: '{worktrees_dir}/builder-codex'
+    advanced_config: { effort: high }
     allow_existing: true
     instructions: You are builder-codex, the second Builder for Switch Gear HQ. Your role file is AGENTS.override.md in your worktree (the Builder role). Work only on the task the founder names, never pick one yourself. Use your own database (switchgear_codex) and ports 3100/4100 so you never clash with builder or reviewer.
 
@@ -150,8 +150,8 @@ resources:
     display_name: Reviewer
     description: Reviews every builder PR independently by running the code. Never writes the features it reviews.
     provider: codex
-    machine: "{machine}"
-    directory: "{worktrees_dir}/reviewer"
+    machine: '{machine}'
+    directory: '{worktrees_dir}/reviewer'
     allow_existing: true
     instructions: You are the Reviewer for Switch Gear HQ. Your role file is AGENTS.override.md in your worktree (linked from agents/external/reviewer/AGENTS.md); read it and the repo's root AGENTS.md before anything else.
 
@@ -161,13 +161,13 @@ resources:
     name: Switch Gear HQ
     description: The Switch Gear company, one channel per department.
     links:
-      - {from: support_room, to: finance_room, label: refunds}
-      - {from: support_room, to: fulfilment_room, label: delivery issues}
-      - {from: hq_room, to: approvals_room, label: over-limit actions}
-      - {from: fulfilment_room, to: approvals_room, label: over-limit actions}
-      - {from: finance_room, to: approvals_room, label: over-limit actions}
-      - {from: marketing_room, to: approvals_room, label: over-limit actions}
-      - {from: support_room, to: approvals_room, label: over-limit actions}
+      - { from: support_room, to: finance_room, label: refunds }
+      - { from: support_room, to: fulfilment_room, label: delivery issues }
+      - { from: hq_room, to: approvals_room, label: over-limit actions }
+      - { from: fulfilment_room, to: approvals_room, label: over-limit actions }
+      - { from: finance_room, to: approvals_room, label: over-limit actions }
+      - { from: marketing_room, to: approvals_room, label: over-limit actions }
+      - { from: support_room, to: approvals_room, label: over-limit actions }
 
   hq_room:
     type: room
@@ -175,10 +175,10 @@ resources:
     name: hq
     description: Founder's office. The founder sets goals here; daily company report.
     instructions: How this channel works is in rooms/hq.md in the repo.
-    bridge: "{bridge}"
+    bridge: '{bridge}'
     channel_type: channel_public
     agents: [chief_of_staff]
-    users: ["{$creator}"]
+    users: ['{$creator}']
 
   approvals_room:
     type: room
@@ -186,26 +186,26 @@ resources:
     name: approvals
     description: Every action above a limit waits here for the founder.
     instructions: How this channel works is in rooms/approvals.md in the repo. Only the founder approves or rejects.
-    bridge: "{bridge}"
+    bridge: '{bridge}'
     channel_type: channel_public
     agents:
-      - {if: "{with_gatekeeper}", value: [chief_of_staff, gatekeeper]}
-      - {value: [chief_of_staff]}
-    users: ["{$creator}"]
+      - { if: '{with_gatekeeper}', value: [chief_of_staff, gatekeeper] }
+      - { value: [chief_of_staff] }
+    users: ['{$creator}']
 
   engineering_room:
     type: room
-    if: "{fresh_server}"
+    if: '{fresh_server}'
     group: org
     name: engineering
     description: Tasks, bugs, PRs, reviews, deploys and incidents.
     instructions: How this channel works is in rooms/engineering.md in the repo.
-    bridge: "{bridge}"
+    bridge: '{bridge}'
     channel_type: channel_public
     agents:
-      - {if: "{with_gatekeeper}", value: [builder, builder_codex, reviewer, gatekeeper]}
-      - {value: [builder, builder_codex, reviewer]}
-    users: ["{$creator}"]
+      - { if: '{with_gatekeeper}', value: [builder, builder_codex, reviewer, gatekeeper] }
+      - { value: [builder, builder_codex, reviewer] }
+    users: ['{$creator}']
 
   fulfilment_room:
     type: room
@@ -213,12 +213,12 @@ resources:
     name: fulfilment
     description: Print jobs, shipments, misprints and failed deliveries.
     instructions: How this channel works is in rooms/fulfilment.md in the repo.
-    bridge: "{bridge}"
+    bridge: '{bridge}'
     channel_type: channel_public
     agents:
-      - {if: "{with_gatekeeper}", value: [fulfilment, gatekeeper]}
-      - {value: [fulfilment]}
-    users: ["{$creator}"]
+      - { if: '{with_gatekeeper}', value: [fulfilment, gatekeeper] }
+      - { value: [fulfilment] }
+    users: ['{$creator}']
 
   finance_room:
     type: room
@@ -226,12 +226,12 @@ resources:
     name: finance
     description: Refunds, invoices, payouts, settlements, GST and the P&L.
     instructions: How this channel works is in rooms/finance.md in the repo.
-    bridge: "{bridge}"
+    bridge: '{bridge}'
     channel_type: channel_public
     agents:
-      - {if: "{with_gatekeeper}", value: [finance, gatekeeper]}
-      - {value: [finance]}
-    users: ["{$creator}"]
+      - { if: '{with_gatekeeper}', value: [finance, gatekeeper] }
+      - { value: [finance] }
+    users: ['{$creator}']
 
   marketing_room:
     type: room
@@ -239,12 +239,12 @@ resources:
     name: marketing
     description: Campaigns, posts, discount codes and ad budget.
     instructions: How this channel works is in rooms/marketing.md in the repo.
-    bridge: "{bridge}"
+    bridge: '{bridge}'
     channel_type: channel_public
     agents:
-      - {if: "{with_gatekeeper}", value: [marketing, gatekeeper]}
-      - {value: [marketing]}
-    users: ["{$creator}"]
+      - { if: '{with_gatekeeper}', value: [marketing, gatekeeper] }
+      - { value: [marketing] }
+    users: ['{$creator}']
 
   support_room:
     type: room
@@ -252,24 +252,24 @@ resources:
     name: support
     description: Customer tickets, returns, exchanges and order tracking.
     instructions: How this channel works is in rooms/support.md in the repo.
-    bridge: "{bridge}"
+    bridge: '{bridge}'
     channel_type: channel_public
     agents:
-      - {if: "{with_gatekeeper}", value: [support, gatekeeper]}
-      - {value: [support]}
-    users: ["{$creator}"]
+      - { if: '{with_gatekeeper}', value: [support, gatekeeper] }
+      - { value: [support] }
+    users: ['{$creator}']
 
   research_room:
     type: room
-    if: "{fresh_server}"
+    if: '{fresh_server}'
     group: org
     name: research
     description: Market, partner, tool and codebase questions from any room.
     instructions: How this channel works is in rooms/research.md in the repo.
-    bridge: "{bridge}"
+    bridge: '{bridge}'
     channel_type: channel_public
     agents: [researcher]
-    users: ["{$creator}"]
+    users: ['{$creator}']
 
   events_room:
     type: room
@@ -277,9 +277,9 @@ resources:
     name: events
     description: Every store event, in order. Read-only; nobody replies.
     instructions: Gatekeeper posts every store event here. Nobody replies in this channel.
-    bridge: "{bridge}"
+    bridge: '{bridge}'
     channel_type: channel_public
     agents:
-      - {if: "{with_gatekeeper}", value: [gatekeeper]}
-      - {value: []}
-    users: ["{$creator}"]
+      - { if: '{with_gatekeeper}', value: [gatekeeper] }
+      - { value: [] }
+    users: ['{$creator}']
