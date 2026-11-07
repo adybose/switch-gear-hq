@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { ticketInput, trackQuery } from './tickets';
+import { ticketInput, ticketListQuery, trackQuery } from './tickets';
 
 describe('track and ticket validation', () => {
   it('requires a valid email and an order number to track', () => {
@@ -20,5 +20,15 @@ describe('track and ticket validation', () => {
     expect(ticketInput.safeParse({ ...base, message: '   ' }).success).toBe(false);
     expect(ticketInput.safeParse({ ...base, message: 'x'.repeat(2001) }).success).toBe(false);
     expect(ticketInput.safeParse({ ...base, message: 'x'.repeat(2000) }).success).toBe(true);
+  });
+
+  it('lists all tickets by default and accepts only the three ticket statuses', () => {
+    expect(ticketListQuery.parse({})).toEqual({});
+    for (const status of ['open', 'waiting', 'closed']) {
+      expect(ticketListQuery.parse({ status })).toEqual({ status });
+    }
+    for (const status of ['', 'paid', 'OPEN']) {
+      expect(ticketListQuery.safeParse({ status }).success).toBe(false);
+    }
   });
 });

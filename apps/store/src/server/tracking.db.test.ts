@@ -2,8 +2,10 @@ import { mkdtempSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { afterAll, beforeAll, beforeEach, describe, expect, it } from 'vitest';
+import { run } from '../../../../packages/sg-cli/src/cli';
 import { GET as track } from '../app/api/v1/orders/track/route';
-import { POST as postTicket } from '../app/api/v1/tickets/route';
+import { GET as listTickets, POST as postTicket } from '../app/api/v1/tickets/route';
+import { loadOrCreateKeys } from './api-keys';
 import { placeOrder } from './checkout';
 import { createDb, type Db } from './db';
 import { recordEvent } from './events';
@@ -49,6 +51,15 @@ describe.skipIf(!process.env.DATABASE_URL)('order tracking and contact form (dat
       headers: { 'content-type': 'application/json' },
       body: JSON.stringify(body),
     });
+
+  const listRequest = (department?: string, query = '') => {
+    const keys = loadOrCreateKeys(options.keysPath).keys;
+    return new Request(`http://localhost/api/v1/tickets${query}`, {
+      headers: department
+        ? { authorization: `Bearer ${keys[department as keyof typeof keys]}` }
+        : {},
+    });
+  };
 
   beforeAll(() => {
     db = createDb();
@@ -210,5 +221,123 @@ describe.skipIf(!process.env.DATABASE_URL)('order tracking and contact form (dat
       (await postTicket(ticketRequest({ email: 'bad', type: 'other', message: 'Hi' }))).status,
     ).toBe(422);
     expect(await db.ticket.count()).toBe(1);
+  });
+
+  it('lists contact tickets with their verified order number and messages for support', async () => {
+    const number = await place();
+    await postTicket(
+      ticketRequest({
+        email: customer.email,
+        orderNumber: number,
+        type: 'wismo',
+        message: 'Where is my tee?',
+      }),
+    );
+    await postTicket(
+      ticketRequest({
+        email: 'new@example.com',
+        type: 'other',
+        message: 'Do you have a size chart?',
+      }),
+    );
+    // Pin queue order independently of the database's clock resolution.
+    await db.ticket.update({
+      where: { number: 'TCK-1' },
+      data: { createdAt: new Date('2026-11-07T10:00:00Z') },
+    });
+    await db.ticket.update({
+      where: { number: 'TCK-2' },
+      data: { createdAt: new Date('2026-11-07T10:01:00Z') },
+    });
+
+    const response = await listTickets(listRequest('support'));
+    expect(response.status).toBe(200);
+    const tickets = await response.json();
+    expect(tickets).toHaveLength(2);
+    expect(tickets[0]).toEqual({
+      number: 'TCK-2',
+      orderNumber: null,
+      type: 'other',
+      status: 'open',
+      messages: [{ from: 'customer', body: 'Do you have a size chart?', at: expect.any(String) }],
+    });
+    expect(tickets[1]).toEqual({
+      number: 'TCK-1',
+      orderNumber: number,
+      type: 'wismo',
+      status: 'open',
+      messages: [{ from: 'customer', body: 'Where is my tee?', at: expect.any(String) }],
+    });
+    // Reading the queue creates no new business events.
+    expect(await db.event.count({ where: { type: 'ticket.created' } })).toBe(2);
+  });
+
+  it('filters every ticket status and rejects invalid filters', async () => {
+    for (const status of ['open', 'waiting', 'closed'] as const) {
+      const response = await postTicket(
+        ticketRequest({
+          email: 'a@example.com',
+          type: 'other',
+          message: status,
+        }),
+      );
+      const { ticketNumber } = await response.json();
+      // Fixture states for follow-up reply/close work; not a production mutation path.
+      await db.ticket.update({ where: { number: ticketNumber }, data: { status } });
+    }
+    for (const status of ['open', 'waiting', 'closed']) {
+      const response = await listTickets(listRequest('support', `?status=${status}`));
+      expect(response.status).toBe(200);
+      const tickets = await response.json();
+      expect(tickets).toHaveLength(1);
+      expect(tickets[0].status).toBe(status);
+    }
+    const invalid = await listTickets(listRequest('support', '?status=paid'));
+    expect(invalid.status).toBe(422);
+    expect(await invalid.json()).toMatchObject({ error: 'validation_failed' });
+  });
+
+  it('requires tickets:read and returns an empty array for an empty queue', async () => {
+    expect((await listTickets(listRequest())).status).toBe(401);
+    const badKey = new Request('http://localhost/api/v1/tickets', {
+      headers: { authorization: 'Bearer sg_support_invalid' },
+    });
+    expect((await listTickets(badKey)).status).toBe(401);
+    for (const department of ['engineering', 'finance', 'fulfilment', 'marketing']) {
+      expect((await listTickets(listRequest(department))).status).toBe(403);
+    }
+    for (const department of ['support', 'hq', 'founder']) {
+      const response = await listTickets(listRequest(department));
+      expect(response.status).toBe(200);
+      expect(await response.json()).toEqual([]);
+    }
+  });
+
+  it('sg tickets list reads the real route with the support key, including JSON output', async () => {
+    await postTicket(
+      ticketRequest({
+        email: 'a@example.com',
+        type: 'complaint',
+        message: 'Print is crooked',
+      }),
+    );
+    const env = {
+      SG_API_URL: 'http://localhost/api/v1',
+      SG_API_KEY: loadOrCreateKeys(options.keysPath).keys.support,
+    };
+    const fetchRoute: typeof fetch = async (input, init) =>
+      listTickets(new Request(String(input), init));
+    const deps = { env, cwd: options.keysPath, fetch: fetchRoute };
+    expect(await run(['tickets', 'list', '--status', 'open'], deps)).toEqual({
+      code: 0,
+      out: 'TCK-1  orderNumber=-  type=complaint  status=open',
+    });
+    const json = await run(['tickets', 'list', '--json'], deps);
+    expect(json.code).toBe(0);
+    expect(JSON.parse(json.out)).toMatchObject([{ number: 'TCK-1', type: 'complaint' }]);
+    expect(await run(['tickets', 'list', '--status', 'closed'], deps)).toEqual({
+      code: 0,
+      out: 'Nothing found.',
+    });
   });
 });

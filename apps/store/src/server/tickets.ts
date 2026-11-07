@@ -1,6 +1,28 @@
 import type { PrismaClient } from '../generated/prisma/client';
 import { recordEvent } from './events';
-import type { TicketInput } from './validation/tickets';
+import type { TicketInput, TicketListQuery } from './validation/tickets';
+
+/** Support queue, newest first. Exposes public order numbers, never internal/customer IDs. */
+export async function listTickets(db: PrismaClient, status?: TicketListQuery['status']) {
+  const tickets = await db.ticket.findMany({
+    where: status ? { status } : {},
+    orderBy: [{ createdAt: 'desc' }, { id: 'desc' }],
+    select: {
+      number: true,
+      order: { select: { number: true } },
+      type: true,
+      status: true,
+      messages: true,
+    },
+  });
+  return tickets.map((ticket) => ({
+    number: ticket.number,
+    orderNumber: ticket.order?.number ?? null,
+    type: ticket.type,
+    status: ticket.status,
+    messages: ticket.messages,
+  }));
+}
 
 /**
  * Creates a ticket from the website contact/return form and records `ticket.created`.
