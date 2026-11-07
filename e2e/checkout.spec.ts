@@ -41,10 +41,14 @@ test('checkout one tee: PIN check, totals, confirmation page', async ({ page }) 
   await expect(page.getByTestId('total')).toHaveText('₹678'); // ₹599 + ₹79 shipping
 
   await page.getByRole('button', { name: 'Place order' }).click();
+  // PayMock's page (the sim), then back to the order once paid.
+  await expect(page).toHaveURL(/\/paymock\/pay\/pay_/);
+  await expect(page.getByTestId('paymock-amount')).toHaveText('₹678');
+  await page.getByRole('button', { name: 'Success' }).click();
   await expect(page).toHaveURL(/\/orders\/ORD-\d+\?t=/);
   await expect(page.getByTestId('order-number')).toHaveText(/^ORD-\d+$/);
   await expect(page.getByTestId('order-total')).toHaveText('₹678');
-  await expect(page.getByText('Waiting for payment')).toBeVisible();
+  await expect(page.getByText('Paid, going to print')).toBeVisible();
   await expect(page.getByTestId('cart-count')).toHaveText('0');
 
   // The confirmation page needs the signed link.
@@ -101,5 +105,31 @@ test('the checkout API prices from the catalogue and blocks unserviceable PINs',
   };
   expect(body.orderNumber).toMatch(/^ORD-\d+$/);
   expect(body.totalPaise).toBe(87800); // ₹799 + ₹79
-  expect((await request.get(body.paymentUrl)).status()).toBe(200);
+  // paymentUrl opens PayMock's page for this order.
+  const pay = await request.get(body.paymentUrl);
+  expect(pay.status()).toBe(200);
+  expect(pay.url()).toMatch(/\/paymock\/pay\/pay_/);
+  expect(await pay.text()).toContain(body.orderNumber);
+});
+
+test('a failed payment cancels the order', async ({ page }) => {
+  await addToCart(page, 'silk-board-survivor', 'Classic (180 GSM)', 'M');
+  await page.goto('/checkout');
+  await fillCustomer(page, '560034', 'Karnataka');
+  await page.getByRole('button', { name: 'Place order' }).click();
+  await expect(page).toHaveURL(/\/paymock\/pay\/pay_/);
+  await page.getByRole('button', { name: 'Failure' }).click();
+  await expect(page).toHaveURL(/\/orders\/ORD-\d+\?t=/);
+  await expect(page.getByText('Cancelled', { exact: true })).toBeVisible();
+});
+
+test('a pending payment leaves the order waiting, with Pay now', async ({ page }) => {
+  await addToCart(page, 'silk-board-survivor', 'Classic (180 GSM)', 'M');
+  await page.goto('/checkout');
+  await fillCustomer(page, '560034', 'Karnataka');
+  await page.getByRole('button', { name: 'Place order' }).click();
+  await page.getByRole('button', { name: 'Pending' }).click();
+  await expect(page.getByText('Waiting for payment')).toBeVisible();
+  await page.getByTestId('pay-now').click();
+  await expect(page.getByText('This payment is pending.')).toBeVisible();
 });

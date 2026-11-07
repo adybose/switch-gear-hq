@@ -6,13 +6,13 @@ import { connection } from 'next/server';
 import { colourStyle, FIT_LABELS } from '../../../lib/styles';
 import { getOrderSummary } from '../../../server/checkout';
 import { getDb } from '../../../server/db';
-import { verifyOrderToken } from '../../../server/order-link';
+import { payPath, verifyOrderToken } from '../../../server/order-link';
 
 export const metadata: Metadata = { title: 'Order confirmation', robots: { index: false } };
 
 type Props = {
   params: Promise<{ number: string }>;
-  searchParams: Promise<{ t?: string | string[] }>;
+  searchParams: Promise<{ t?: string | string[]; payment?: string | string[] }>;
 };
 
 const STATUS_TEXT: Record<string, string> = {
@@ -29,7 +29,7 @@ const STATUS_TEXT: Record<string, string> = {
 export default async function OrderConfirmationPage({ params, searchParams }: Props) {
   await connection();
   const { number } = await params;
-  const { t } = await searchParams;
+  const { t, payment } = await searchParams;
   // A wrong or missing token looks exactly like a missing order.
   if (!verifyOrderToken(number, typeof t === 'string' ? t : null)) notFound();
   const order = await getOrderSummary(getDb(), number);
@@ -48,8 +48,25 @@ export default async function OrderConfirmationPage({ params, searchParams }: Pr
       </div>
 
       {order.status === 'placed' && (
-        <p className="rounded-md bg-amber-50 p-3 text-sm text-amber-900">
-          Payment through our demo gateway opens soon. Nothing has been charged.
+        <div className="space-y-3 rounded-md bg-amber-50 p-3 text-sm text-amber-900">
+          <p>
+            {payment === 'unavailable'
+              ? 'The payment page could not be opened just now. Please try again in a minute.'
+              : 'Not paid yet. A pending payment completes within 5 minutes; refresh to see it.'}{' '}
+            Unpaid orders are cancelled after 30 minutes.
+          </p>
+          <a
+            href={payPath(order.number)}
+            className="inline-block rounded-md bg-neutral-900 px-4 py-2 font-medium text-white"
+            data-testid="pay-now"
+          >
+            Pay now
+          </a>
+        </div>
+      )}
+      {order.status === 'cancelled' && (
+        <p className="rounded-md bg-neutral-100 p-3 text-sm text-neutral-700">
+          This order was cancelled because it wasn&apos;t paid. Nothing has been charged.
         </p>
       )}
 

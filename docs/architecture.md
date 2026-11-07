@@ -52,9 +52,9 @@ IDs shown to humans are short and prefixed: `ORD-1042`, `TCK-88`, `APR-7`, `INV-
 | Product | slug, name, collection, description, artworkUrl, status (draft, published) |
 | Variant | productId, sku, fit, colour, size, pricePaise, active |
 | Customer | name, email (`@example.com`), phone, address, city, state, pincode (first order's details; links orders by email, never updated by checkout) |
-| Order | number, customerId, shipName, shipPhone, shipAddress, shipCity, shipState, shipPincode (per-order delivery details), status, subtotalPaise, discountPaise, shippingPaise, taxPaise, totalPaise, discountCode, source (web, generator), placedAt |
+| Order | number, customerId, shipName, shipPhone, shipAddress, shipCity, shipState, shipPincode (per-order delivery details), status, subtotalPaise, discountPaise, shippingPaise, taxPaise, totalPaise, discountCode, source (web, generator), placedAt (business time), createdAt (real time) |
 | OrderItem | orderId, variantId, qty, unitPricePaise |
-| Payment | orderId, gatewayRef, status, amountPaise, feePaise, capturedAt, settledAt |
+| Payment | orderId, gatewayRef, status, amountPaise, feePaise, feeGstPaise, failureReason, settlementRef, capturedAt, settledAt (a row per PayMock outcome) |
 | Refund | orderId, amountPaise, reason, status (requested, pending_approval, processed, rejected), approvalId |
 | PrintJob | orderId, partnerRef, status, attempt, costPaise |
 | Shipment | orderId, awb, status, zone, attempts, costPaise |
@@ -101,6 +101,22 @@ commit, and tests for both. All money columns also have non-negative `CHECK` con
 - Body: `{ eventId, type, occurredAt, data }`. Signing helpers live in `packages/shared/src/webhooks.ts`.
 - Idempotent: each webhook has an `eventId`; duplicates are ignored. A `WebhookReceipt` row is
   written in the same transaction as the handler's effects, so a failed handler can be retried.
+
+## PayMock (payments)
+
+- Checkout returns `paymentUrl` = `/pay/ORD-…?t=…`. That store route asks the sim to open the
+  order's payment (`POST /paymock/v1/payments`, signed with the PayMock secret; an open payment
+  is reused) and redirects the browser to the pay page on `SIM_PUBLIC_URL`.
+- The pay page has Success / Failure / Pending. PayMock sends `payment.captured` or
+  `payment.failed`; pending captures within 5 business minutes. Webhooks retry on 5xx and
+  network errors with the same `eventId`; a 409 from the store voids the payment.
+- Captured payments settle in one `settlement.processed` batch at T+2.
+- The store cancels orders still `placed` 30 business minutes after checkout, but never sooner
+  than 5 real minutes (measured from `Order.createdAt`, the real-time row stamp) (`order.cancelled`),
+  from a timer started in `apps/store/src/instrumentation.ts`.
+- PayMock gets both halves of that deadline (`expiresAt` business, `minExpiresAt` real) and
+  applies the same `isUnpaidExpired()` rule, so it never expires a payment the store would still take.
+- Contract and fee rule: `packages/shared/src/paymock.ts`. PayMock state is in memory.
 
 ## Demo clock
 

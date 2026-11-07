@@ -13,6 +13,21 @@ export const envelopeSchema = z.object({
   data: z.record(z.string(), z.unknown()),
 });
 
+/**
+ * Thrown by a handler for a webhook the store refuses for good (unknown order, wrong amount,
+ * order no longer payable). Nothing is recorded, and the route answers 409 so the partner
+ * stops retrying.
+ */
+export class WebhookRejected extends Error {
+  override name = 'WebhookRejected';
+  constructor(
+    readonly code: string,
+    message: string,
+  ) {
+    super(message);
+  }
+}
+
 /** Applies one webhook's effects (state change + outbox event) inside `tx`. */
 export type WebhookHandler = (
   tx: Prisma.TransactionClient,

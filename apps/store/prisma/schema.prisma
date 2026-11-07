@@ -243,6 +243,9 @@ model Order {
   discountCode  String?
   source        OrderSource      @default(web)
   placedAt      DateTime         @default(now())
+  // Real (wall-clock) time the row was written; placedAt is business time. Real-time minimums
+  // (e.g. the 5-minute unpaid timer floor) are measured from this.
+  createdAt     DateTime         @default(now())
   updatedAt     DateTime         @updatedAt
   items         OrderItem[]
   payments      Payment[]
@@ -277,7 +280,11 @@ model Payment {
   gatewayRef  String        @unique
   status      PaymentStatus @default(created)
   amountPaise Int
-  feePaise    Int           @default(0)
+  // Gateway fee (2%) and the 18% GST on it, as reported by the gateway on capture.
+  feePaise      Int           @default(0)
+  feeGstPaise   Int           @default(0)
+  failureReason String?
+  settlementRef String?
   createdAt   DateTime      @default(now())
   capturedAt  DateTime?
   settledAt   DateTime?

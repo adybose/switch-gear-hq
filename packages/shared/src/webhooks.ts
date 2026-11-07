@@ -25,6 +25,18 @@ export function webhookSecretEnv(partner: WebhookPartner): string {
   return `${partner.toUpperCase()}_WEBHOOK_SECRET`;
 }
 
+// Test-only fallbacks, matching .env.example, so a fresh clone works without a .env.
+const TEST_SECRETS: Record<WebhookPartner, string> = {
+  paymock: 'test_paymock_secret',
+  printhub: 'test_printhub_secret',
+  shipfast: 'test_shipfast_secret',
+};
+
+/** The partner's secret from the environment, or its test value from .env.example. */
+export function webhookSecret(partner: WebhookPartner): string {
+  return process.env[webhookSecretEnv(partner)] || TEST_SECRETS[partner];
+}
+
 /** Header value for a raw body: `sha256=<hex>`. */
 export function signWebhook(secret: string, rawBody: string): string {
   return `sha256=${createHmac('sha256', secret).update(rawBody, 'utf8').digest('hex')}`;

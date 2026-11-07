@@ -34,6 +34,12 @@ export interface EventPayloads {
     amountPaise: number;
     reason: string;
   };
+  /** An order cancelled for a reason other than a failed payment, e.g. not paid in time. */
+  'order.cancelled': {
+    orderNumber: string;
+    totalPaise: number;
+    reason: 'unpaid_timeout';
+  };
   'printjob.misprint': {
     orderNumber: string;
     partnerRef: string;
@@ -146,6 +152,7 @@ export const EVENT_TYPES = [
   'order.placed',
   'order.paid',
   'payment.failed',
+  'order.cancelled',
   'printjob.misprint',
   'printjob.late',
   'shipment.delivered',

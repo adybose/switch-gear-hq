@@ -19,7 +19,7 @@ How to use this file:
 | T-04 | Shared package: money, GST, events, clock | builder | T-01 | MVP | done |
 | T-05 | Storefront pages | builder | T-03 | MVP | done |
 | T-06 | Checkout and pricing rules | builder | T-04, T-05 | MVP | done |
-| T-07 | PayMock gateway and payment flow | builder | T-06, T-08 | MVP | todo |
+| T-07 | PayMock gateway and payment flow | builder | T-06, T-08 | MVP | done |
 | T-08 | Event outbox, events API, signed webhooks | builder | T-02, T-04 | MVP | done |
 | T-09 | API keys, scopes, validation | builder | T-02 | MVP | todo |
 | T-10 | Approval gates | builder | T-08, T-09 | MVP | todo |
