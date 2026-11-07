@@ -1,6 +1,6 @@
 ---
 name: hand-off
-description: Pass work to another department in its room with the standard hand-off message. Use when a task needs finance, fulfilment, support, marketing, engineering or research.
+description: "Pass work to another department in its room with the standard hand-off message. Use when a task needs finance, fulfilment, support, marketing, engineering or research."
 ---
 
 # Hand off

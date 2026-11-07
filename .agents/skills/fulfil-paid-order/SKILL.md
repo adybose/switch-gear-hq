@@ -1,6 +1,6 @@
 ---
 name: fulfil-paid-order
-description: Send a paid order to PrintHub and book the shipment when printing is done. Use when order.paid mentions you or a paid order has no print job.
+description: "Send a paid order to PrintHub and book the shipment when printing is done. Use when order.paid mentions you or a paid order has no print job."
 ---
 
 # Fulfil a paid order

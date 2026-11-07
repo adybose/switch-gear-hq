@@ -1,11 +1,11 @@
 ---
 name: handle-misprint
-description: Handle a misprinted print job: free reprint, tell finance about the cost, tell support. Use on printjob.misprint.
+description: "Handle a misprinted print job: free reprint, tell finance about the cost, tell support. Use on printjob.misprint."
 ---
 
 # Handle a misprint
 
-1. `sg print-jobs list --status misprinted` and `sg orders get ORD-n`: confirm which
+1. `sg print-jobs list --status misprint` and `sg orders get ORD-n`: confirm which
    items and the job ID.
 2. `sg print-jobs reprint <job-id>`: a free reprint, one per attempt. The order goes
    back to `printing`.

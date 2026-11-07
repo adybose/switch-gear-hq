@@ -1,6 +1,6 @@
 ---
 name: daily-finance-reports
-description: Produce the daily P&L, GST summary and settlement check. Use for report.daily, month end, or when asked for the numbers.
+description: "Produce the daily P&L, GST summary and settlement check. Use for report.daily, month end, or when asked for the numbers."
 ---
 
 # Daily finance reports

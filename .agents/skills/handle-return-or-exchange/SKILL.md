@@ -1,6 +1,6 @@
 ---
 name: handle-return-or-exchange
-description: Handle a return, exchange or refund request: book the pickup and hand the refund to finance. Use when a customer wants to return or swap an item.
+description: "Handle a return, exchange or refund request: book the pickup and hand the refund to finance. Use when a customer wants to return or swap an item."
 ---
 
 # Handle a return or exchange

@@ -1,11 +1,11 @@
 ---
 name: handle-failed-delivery
-description: Handle a failed or lost shipment: let retries run, then reship or refund via the right owners. Use on shipment.failed or shipment.rto.
+description: "Handle a failed or lost shipment: let retries run, then reship or refund via the right owners. Use on shipment.failed or shipment.rto."
 ---
 
 # Handle a failed delivery
 
-1. `sg shipments list --status failed` and `sg orders get ORD-n`. ShipFast retries a failed
+1. `sg shipments list --status delivery_failed` (also `lost`, `returned_to_origin`) and `sg orders get ORD-n`. ShipFast retries a failed
    delivery twice; wait for those. A lost parcel (`reason lost`) or an RTO needs action.
 2. Reship: `sg shipments reship <id>`. One reship per order is free to run. A second returns
    `202`: follow `request-approval`.

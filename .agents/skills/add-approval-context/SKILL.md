@@ -1,6 +1,6 @@
 ---
 name: add-approval-context
-description: Add a short, factual context note to an approval request for the founder. Use when Gatekeeper posts an APR in #approvals.
+description: "Add a short, factual context note to an approval request for the founder. Use when Gatekeeper posts an APR in #approvals."
 ---
 
 # Add approval context

@@ -1,6 +1,6 @@
 ---
 name: answer-ticket
-description: Answer a customer ticket from facts in the store: order status, tracking, policy. Use on ticket.created.
+description: "Answer a customer ticket from facts in the store: order status, tracking, policy. Use on ticket.created."
 ---
 
 # Answer a ticket

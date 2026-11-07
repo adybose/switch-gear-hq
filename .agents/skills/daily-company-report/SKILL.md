@@ -1,6 +1,6 @@
 ---
 name: daily-company-report
-description: Write the founder's daily company report from the store's numbers. Use on report.daily or when the founder asks how the business is doing.
+description: "Write the founder's daily company report from the store's numbers. Use on report.daily or when the founder asks how the business is doing."
 ---
 
 # Daily company report

@@ -1,6 +1,6 @@
 ---
 name: verify-and-pay-partner-invoice
-description: Check a PrintHub or ShipFast invoice against the store's records and pay it, dispute it, or escalate. Use on invoice.received or the weekly payout run.
+description: "Check a PrintHub or ShipFast invoice against the store's records and pay it, dispute it, or escalate. Use on invoice.received or the weekly payout run."
 ---
 
 # Verify and pay a partner invoice
