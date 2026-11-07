@@ -52,7 +52,7 @@ IDs shown to humans are short and prefixed: `ORD-1042`, `TCK-88`, `APR-7`, `INV-
 | Product | slug, name, collection, description, artworkUrl, status (draft, published) |
 | Variant | productId, sku, fit, colour, size, pricePaise, active |
 | Customer | name, email (`@example.com`), phone, address, city, state, pincode (first order's details; links orders by email, never updated by checkout) |
-| Order | number, customerId, shipName, shipPhone, shipAddress, shipCity, shipState, shipPincode (per-order delivery details), status, subtotalPaise, discountPaise, shippingPaise, taxPaise, totalPaise, discountCode, source (web, generator), placedAt |
+| Order | number, customerId, shipName, shipPhone, shipAddress, shipCity, shipState, shipPincode (per-order delivery details), status, subtotalPaise, discountPaise, shippingPaise, taxPaise, totalPaise, discountCode, source (web, generator), placedAt (business time), createdAt (real time) |
 | OrderItem | orderId, variantId, qty, unitPricePaise |
 | Payment | orderId, gatewayRef, status, amountPaise, feePaise, feeGstPaise, failureReason, settlementRef, capturedAt, settledAt (a row per PayMock outcome) |
 | Refund | orderId, amountPaise, reason, status (requested, pending_approval, processed, rejected), approvalId |
@@ -111,7 +111,8 @@ commit, and tests for both. All money columns also have non-negative `CHECK` con
   `payment.failed`; pending captures within 5 business minutes. Webhooks retry on 5xx and
   network errors with the same `eventId`; a 409 from the store voids the payment.
 - Captured payments settle in one `settlement.processed` batch at T+2.
-- The store cancels orders still `placed` 30 business minutes after checkout (`order.cancelled`),
+- The store cancels orders still `placed` 30 business minutes after checkout, but never sooner
+  than 5 real minutes (measured from `Order.createdAt`, the real-time row stamp) (`order.cancelled`),
   from a timer started in `apps/store/src/instrumentation.ts`.
 - Contract and fee rule: `packages/shared/src/paymock.ts`. PayMock state is in memory.
 

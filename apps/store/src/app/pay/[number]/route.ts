@@ -1,3 +1,4 @@
+import { businessClock } from '@switch-gear/shared/clock';
 import { getDb } from '../../../server/db';
 import { orderPath, verifyOrderToken } from '../../../server/order-link';
 import { openPayment, PaymentUnavailable } from '../../../server/paymock';
@@ -22,6 +23,7 @@ export async function GET(
   try {
     const payment = await openPayment(getDb(), number, {
       simUrl: process.env.SIM_URL || DEFAULT_SIM_URL,
+      speed: (await businessClock().read()).speed,
       returnUrl: orderUrl.toString(),
     });
     if (!payment) return Response.redirect(orderUrl, 303);

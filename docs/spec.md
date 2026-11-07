@@ -62,7 +62,7 @@ per department; each key can call only its department's endpoints.
 
 | State | Owner | Moves on when | Timer |
 | --- | --- | --- | --- |
-| placed | Engineering (checkout) | PayMock confirms payment | Cancelled after 30 min unpaid |
+| placed | Engineering (checkout) | PayMock confirms payment | Cancelled after 30 min unpaid (never sooner than 5 real minutes) |
 | paid | Fulfilment | PrintHub accepts the print job | Within 1 hour |
 | printing | Fulfilment | PrintHub hands the parcel to ShipFast | 2 business days |
 | shipped | Fulfilment | ShipFast confirms delivery | 1–5 days by zone |

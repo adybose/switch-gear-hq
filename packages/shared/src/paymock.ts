@@ -29,8 +29,21 @@ export function settlementNet(amountPaise: number, fee: GatewayFee): number {
 
 const MINUTE = 60_000;
 
-/** Unpaid orders are cancelled this long (business time) after they were placed. */
+/**
+ * Unpaid orders are cancelled 30 business minutes after they were placed, but never sooner
+ * than 5 real minutes: a person is paying, and at demo speed 30 business minutes is seconds.
+ */
 export const UNPAID_CANCEL_AFTER_MS = 30 * MINUTE;
+export const UNPAID_CANCEL_MIN_REAL_MS = 5 * MINUTE;
+
+/**
+ * The unpaid deadline in business time, for a clock running `speed` business seconds per real
+ * second: the later of 30 business minutes and 5 real minutes after `placedAt`.
+ */
+export function unpaidDeadline(placedAt: Date, speed: number): Date {
+  const wait = Math.max(UNPAID_CANCEL_AFTER_MS, UNPAID_CANCEL_MIN_REAL_MS * speed);
+  return new Date(placedAt.getTime() + wait);
+}
 /** A "pending" payment resolves within this long (business time). */
 export const PENDING_RESOLVE_WITHIN_MS = 5 * MINUTE;
 /** Captured payments settle T+2 (business time). */

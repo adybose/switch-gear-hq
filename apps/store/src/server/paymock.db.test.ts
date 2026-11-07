@@ -1,4 +1,9 @@
-import { gatewayFee, UNPAID_CANCEL_AFTER_MS } from '@switch-gear/shared/paymock';
+import {
+  gatewayFee,
+  UNPAID_CANCEL_AFTER_MS,
+  UNPAID_CANCEL_MIN_REAL_MS,
+  unpaidDeadline,
+} from '@switch-gear/shared/paymock';
 import { signWebhook, verifyWebhook } from '@switch-gear/shared/webhooks';
 import { mkdtempSync } from 'node:fs';
 import { tmpdir } from 'node:os';
@@ -176,16 +181,26 @@ describe.skipIf(!process.env.DATABASE_URL)('PayMock in the store (database)', ()
     });
   });
 
+  /** Real time at which the order has existed for 5 real minutes. */
+  const realFloor = async (number: string) =>
+    new Date(
+      (await db.order.findUniqueOrThrow({ where: { number } })).createdAt.getTime() +
+        UNPAID_CANCEL_MIN_REAL_MS,
+    );
+  const businessDeadline = new Date(PLACED_AT.getTime() + UNPAID_CANCEL_AFTER_MS);
+
   it('cancels orders unpaid for 30 business minutes, once, with order.cancelled', async () => {
     const { number, total } = await order();
-    const deadline = new Date(PLACED_AT.getTime() + UNPAID_CANCEL_AFTER_MS);
+    const real = await realFloor(number);
 
-    expect(await cancelUnpaidOrders(db, new Date(deadline.getTime() - 1))).toEqual([]);
+    expect(await cancelUnpaidOrders(db, new Date(businessDeadline.getTime() - 1), real)).toEqual(
+      [],
+    );
     expect(await statusOf(number)).toBe('placed');
 
-    expect(await cancelUnpaidOrders(db, deadline)).toEqual([number]);
+    expect(await cancelUnpaidOrders(db, businessDeadline, real)).toEqual([number]);
     expect(await statusOf(number)).toBe('cancelled');
-    expect(await cancelUnpaidOrders(db, deadline)).toEqual([]);
+    expect(await cancelUnpaidOrders(db, businessDeadline, real)).toEqual([]);
     const events = await eventsOf('order.cancelled');
     expect(events).toHaveLength(1);
     expect(events[0]?.payload).toEqual({
@@ -195,12 +210,24 @@ describe.skipIf(!process.env.DATABASE_URL)('PayMock in the store (database)', ()
     });
   });
 
+  it('waits at least 5 real minutes even when business time has run far ahead', async () => {
+    const { number } = await order();
+    const real = await realFloor(number);
+    // Demo speed: a whole business day has passed, but under 5 real minutes.
+    const dayLater = new Date(PLACED_AT.getTime() + 24 * 60 * 60_000);
+
+    expect(await cancelUnpaidOrders(db, dayLater, new Date(real.getTime() - 1))).toEqual([]);
+    expect(await statusOf(number)).toBe('placed');
+    expect(await cancelUnpaidOrders(db, dayLater, real)).toEqual([number]);
+  });
+
   it('leaves paid orders alone and refuses a capture after the order was cancelled', async () => {
     const paid = await order();
     await send('payment.captured', captured(paid.number, paid.total));
     const late = await order();
-    const deadline = new Date(PLACED_AT.getTime() + UNPAID_CANCEL_AFTER_MS);
-    expect(await cancelUnpaidOrders(db, deadline)).toEqual([late.number]);
+    expect(await cancelUnpaidOrders(db, businessDeadline, await realFloor(late.number))).toEqual([
+      late.number,
+    ]);
     expect(await statusOf(paid.number)).toBe('paid');
 
     const res = await send('payment.captured', captured(late.number, late.total));
@@ -315,6 +342,7 @@ describe.skipIf(!process.env.DATABASE_URL)('PayMock in the store (database)', ()
     }) as unknown as typeof globalThis.fetch;
 
     const payment = await openPayment(db, number, {
+      speed: 1,
       simUrl: 'http://sim.test',
       returnUrl: 'http://localhost:3000/orders/x',
       fetch,
@@ -327,13 +355,13 @@ describe.skipIf(!process.env.DATABASE_URL)('PayMock in the store (database)', ()
       orderNumber: number,
       amountPaise: total,
       returnUrl: 'http://localhost:3000/orders/x',
-      expiresAt: new Date(PLACED_AT.getTime() + UNPAID_CANCEL_AFTER_MS).toISOString(),
+      expiresAt: unpaidDeadline(PLACED_AT, 1).toISOString(),
     });
 
     // Not waiting for payment any more: nothing to open.
-    await cancelUnpaidOrders(db, new Date(PLACED_AT.getTime() + UNPAID_CANCEL_AFTER_MS));
+    await cancelUnpaidOrders(db, businessDeadline, await realFloor(number));
     expect(
-      await openPayment(db, number, { simUrl: 'http://sim.test', returnUrl: 'x', fetch }),
+      await openPayment(db, number, { speed: 1, simUrl: 'http://sim.test', returnUrl: 'x', fetch }),
     ).toBeNull();
   });
 
@@ -343,7 +371,7 @@ describe.skipIf(!process.env.DATABASE_URL)('PayMock in the store (database)', ()
       throw new Error('ECONNREFUSED');
     }) as unknown as typeof globalThis.fetch;
     await expect(
-      openPayment(db, number, { simUrl: 'http://sim.test', returnUrl: 'x', fetch: down }),
+      openPayment(db, number, { speed: 1, simUrl: 'http://sim.test', returnUrl: 'x', fetch: down }),
     ).rejects.toBeInstanceOf(PaymentUnavailable);
   });
 });

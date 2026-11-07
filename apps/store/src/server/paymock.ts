@@ -2,6 +2,8 @@ import { gstTypeForState, sumPaise } from '@switch-gear/shared/money';
 import {
   settlementNet,
   UNPAID_CANCEL_AFTER_MS,
+  UNPAID_CANCEL_MIN_REAL_MS,
+  unpaidDeadline,
   type PaymockCreatePayment,
   type PaymockPayment,
 } from '@switch-gear/shared/paymock';
@@ -223,13 +225,21 @@ export function registerPaymockHandlers(): void {
 registerPaymockHandlers();
 
 /**
- * Cancels orders still `placed` 30 business minutes after they were placed, one transaction
- * per order, each with an `order.cancelled` event. Returns the cancelled order numbers.
+ * Cancels orders still `placed` once both 30 business minutes (`now`, business time) and
+ * 5 real minutes (`realNow`) have passed since checkout, one transaction per order, each with
+ * an `order.cancelled` event. Returns the cancelled order numbers.
  */
-export async function cancelUnpaidOrders(db: PrismaClient, now: Date): Promise<string[]> {
-  const cutoff = new Date(now.getTime() - UNPAID_CANCEL_AFTER_MS);
+export async function cancelUnpaidOrders(
+  db: PrismaClient,
+  now: Date,
+  realNow: Date = new Date(),
+): Promise<string[]> {
   const stale = await db.order.findMany({
-    where: { status: 'placed', placedAt: { lte: cutoff } },
+    where: {
+      status: 'placed',
+      placedAt: { lte: new Date(now.getTime() - UNPAID_CANCEL_AFTER_MS) },
+      createdAt: { lte: new Date(realNow.getTime() - UNPAID_CANCEL_MIN_REAL_MS) },
+    },
     select: { id: true, number: true, totalPaise: true },
     orderBy: { placedAt: 'asc' },
     take: 200,
@@ -266,6 +276,8 @@ export class PaymentUnavailable extends Error {
 }
 
 export interface OpenPaymentOptions {
+  /** Business clock speed now, to express the 5-real-minute floor in business time. */
+  speed: number;
   /** Sim base URL the store can reach (SIM_URL). */
   simUrl: string;
   /** Where PayMock sends the customer afterwards (the order page). */
@@ -293,7 +305,7 @@ export async function openPayment(
     orderNumber,
     amountPaise: order.totalPaise,
     returnUrl: options.returnUrl,
-    expiresAt: new Date(order.placedAt.getTime() + UNPAID_CANCEL_AFTER_MS).toISOString(),
+    expiresAt: unpaidDeadline(order.placedAt, options.speed).toISOString(),
   };
   const raw = JSON.stringify(body);
   const doFetch = options.fetch ?? globalThis.fetch;
