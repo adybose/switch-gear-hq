@@ -5,6 +5,8 @@ A T-shirt store from Bangalore, run by AI agents in Slack through
 actions. Eight AI agents, one per department, do the rest. Built for the WeMakeDevs
 "Flip the Switch" hackathon.
 
+**[Watch the demo video](https://youtu.be/DEUeMUuAxAE)** · **[Read the blog post](https://dev.to/adybose/i-let-ai-agents-build-and-run-my-t-shirt-store-from-slack-in-just-24-hours-379h)**
+
 > Demo store. No real payments, printing or deliveries. Payments, PrintHub (printing),
 > ShipFast (courier), ads and most orders are simulated. All customers are fake.
 
@@ -81,7 +83,9 @@ Switch registration; without it, it runs health-only.
 
 ## Demo
 
-[`docs/demo-script.md`](docs/demo-script.md): a 3-minute walkthrough.
+- Video: [Switch Gear HQ demo on YouTube](https://youtu.be/DEUeMUuAxAE)
+- Blog post: [I let AI agents build and run my T-shirt store from Slack in just 24 hours](https://dev.to/adybose/i-let-ai-agents-build-and-run-my-t-shirt-store-from-slack-in-just-24-hours-379h) on DEV
+- Script: [`docs/demo-script.md`](docs/demo-script.md), a 3-minute walkthrough
 
 ## Project docs
 
